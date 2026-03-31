@@ -1,15 +1,5 @@
 # Contexto tecnico do projeto
 
-## Marco estavel atual
-
-Versao de referencia consolidada em **31/03/2026 10:25 (America/Sao_Paulo)**.
-
-Backups desta versao:
-- `backups/stable_complete_20260331_102539/`
-- `backups/stable_complete_20260331_102539.zip`
-
-Orientacao: antes de alterar parsing/preenchimento de Excel ou fluxo do formulario, criar novo snapshot em `backups/` e testar os 3 modos (`none`, `dm`, `form`).
-
 Este projeto gera um Excel final de dashboard unindo:
 - dados brutos exportados do Planner/Teams
 - dados manuais `gp_*` (planilha manual ou formulario)

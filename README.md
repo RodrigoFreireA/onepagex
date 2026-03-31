@@ -1,5 +1,15 @@
 # OnePageReport Automacao
 
+## Versao estavel de referencia
+
+Marco atual (mais estavel e completo): **31/03/2026 10:25 (America/Sao_Paulo)**.
+
+Backup completo gerado nesta versao:
+- Pasta snapshot: `backups/stable_complete_20260331_102539/`
+- Arquivo zip: `backups/stable_complete_20260331_102539.zip`
+
+Use este ponto como baseline antes de qualquer refactor grande.
+
 Projeto para gerar um dashboard Excel a partir de:
 - base bruta exportada do Planner/Teams (`.xlsx`)
 - dados manuais opcionais (`gp_*`) via planilha manual ou formulario web
@@ -56,6 +66,18 @@ Alternativa:
 
 ```bash
 python server.py
+```
+
+## Backup rapido (recomendado antes de mudancas grandes)
+
+```powershell
+$ts = Get-Date -Format "yyyyMMdd_HHmmss"
+$dst = "backups/stable_complete_$ts"
+New-Item -ItemType Directory -Force -Path $dst | Out-Null
+Get-ChildItem -Force | Where-Object { $_.Name -notin @(".git","__pycache__","backups") } | ForEach-Object {
+  Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $dst $_.Name) -Recurse -Force
+}
+Compress-Archive -Path (Join-Path $dst "*") -DestinationPath "backups/stable_complete_$ts.zip" -Force
 ```
 
 ## Estrutura minima da pasta

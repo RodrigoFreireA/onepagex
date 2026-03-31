@@ -126,6 +126,16 @@ def gerar():
     ignore_labels = request.form.get("rotulos_ignorar", "")
     tipo_relatorio = request.form.get("tipo_relatorio", "equipe").strip().lower()
     form_data_raw = request.form.get("dados_formulario", "")
+    storypoints_total_raw = (request.form.get("storypoints_total", "") or "").strip()
+    storypoints_total = None
+    if storypoints_total_raw:
+        try:
+            storypoints_total = float(storypoints_total_raw.replace(",", "."))
+        except ValueError:
+            return jsonify({"erro": "Storypoints inválido. Use apenas número (ex.: 198 ou 198,5)."}), 400
+        if storypoints_total < 0:
+            return jsonify({"erro": "Storypoints inválido. Informe um valor maior ou igual a zero."}), 400
+
     form_data = None
     if form_data_raw and form_data_raw.strip():
         try:
@@ -162,13 +172,16 @@ def gerar():
         dm_path = os.path.join(work_dir, "dados_manuais.xlsx")
         dm_file.save(dm_path)
 
+    no_manual_mode = (dm_path is None) and (form_data is None)
+
     try:
         fill_template(TEMPLATE_PATH, input_path, output_path,
                       author=author,
                       dados_manuais_path=dm_path,
                       report_type=tipo_relatorio,
                       ignore_labels=ignore_labels,
-                      form_data=form_data)
+                      form_data=form_data,
+                      storypoints_total=storypoints_total)
 
         warnings = []
         try:
@@ -176,6 +189,22 @@ def gerar():
             warnings = data.get("warnings", [])
         except Exception:
             warnings = []
+
+        if no_manual_mode:
+            warnings.append({
+                "nivel": "aviso",
+                "msg": "Modo 'Sem dados manuais': para máxima precisão de Storypoints e Burndown SP, prefira 'Com planilha manual' (gp_Plann_Sprint)."
+            })
+            if storypoints_total is None:
+                warnings.append({
+                    "nivel": "aviso",
+                    "msg": "Storypoints não informado. KPI STORYPOINTS ficará 0 e o Burndown de Storypoints poderá ficar vazio."
+                })
+            else:
+                warnings.append({
+                    "nivel": "info",
+                    "msg": f"Storypoints manual informado: {storypoints_total:g}."
+                })
     except Exception as e:
         shutil.rmtree(work_dir, ignore_errors=True)
         return jsonify({"erro": f"Erro ao gerar dashboard: {e}"}), 500

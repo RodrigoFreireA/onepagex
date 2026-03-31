@@ -427,6 +427,7 @@
       border-color: var(--teal); background: white; outline: none;
     }
     .gp-table input[type="number"] { text-align: center; max-width: 75px; }
+    .gp-table .pct-input { text-align: center; max-width: 75px; }
     .role-cell {
       font-size: 0.78rem; color: var(--text); font-weight: 500;
       white-space: nowrap; padding-left: 0.7rem; min-width: 180px;
@@ -653,6 +654,21 @@
       gap: 0.6rem;
     }
     .form-preset-box.active { display: flex; }
+    .form-preset-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+    .btn-link.btn-danger {
+      color: var(--error);
+    }
+    .btn-link.btn-danger:hover { color: #b52d2d; }
+    .form-actions-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 0.65rem;
+    }
 
     .section-save-bar {
       margin-top: 0.75rem;
@@ -684,6 +700,39 @@
     .section-save-status.ok { color: var(--success); font-weight: 600; }
     .section-save-status.err { color: var(--error); font-weight: 600; }
     .section-save-status.pending { color: var(--orange-dark); font-weight: 600; }
+    .matrix-preview {
+      display: none;
+      margin-top: 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem;
+      background: #fbfdfc;
+    }
+    .matrix-preview.active { display: block; }
+    .matrix-preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      margin-bottom: 0.45rem;
+      font-size: 0.74rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    #ppPreviewTable {
+      font-size: 0.76rem;
+      min-width: 420px;
+    }
+    #ppPreviewTable th,
+    #ppPreviewTable td {
+      padding: 0.26rem 0.42rem;
+      white-space: nowrap;
+    }
+    #ppPreviewTable td {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   </style>
 </head>
 <body>
@@ -781,12 +830,17 @@
       <div class="tab-pane" id="paneForm">
         <div class="form-preset-box" id="formPresetBox">
           <span id="formPresetMeta">Pre-preenchimento disponivel.</span>
-          <button type="button" class="btn-link" id="btnLoadLastForm">Usar</button>
+          <div class="form-preset-actions">
+            <button type="button" class="btn-link" id="btnLoadLastForm">Usar</button>
+          </div>
         </div>
         <p class="form-tab-info">
           Preencha abaixo os dados das abas <strong>gp_*</strong>. Deixe em branco o que quiser manter do template padrão.
           Em cada seção você pode <strong>colar diretamente da sua planilha</strong> (Ctrl+V).
         </p>
+        <div class="form-actions-row">
+          <button type="button" class="btn-link btn-danger" id="btnClearManualForm">Limpar formulario</button>
+        </div>
 
         <!-- 1. Cabeçalhos -->
         <div class="gp-section open" id="secCabecalhos">
@@ -878,6 +932,14 @@
               <button type="button" class="btn-apply-paste" data-apply="PP">Aplicar matriz</button>
               <button type="button" class="btn-clear-paste" data-clear="gpPlannProjetoPaste">Limpar</button>
               <span class="paste-status" id="pastePP-status"></span>
+            </div>
+            <div class="matrix-preview" id="ppPreviewWrap">
+              <div class="matrix-preview-head">
+                <span id="ppPreviewMeta">Pre-visualizacao indisponivel.</span>
+              </div>
+              <div class="gp-table-wrap">
+                <table class="gp-table" id="ppPreviewTable"></table>
+              </div>
             </div>
           </div>
         </div>
@@ -1071,6 +1133,23 @@
              placeholder="Ex.: FLUXO.CONTINUO;OUTRO_ROTULO" />
     </div>
 
+    <div class="field" id="storypointsNoneField" style="display:none">
+      <label for="storypointsTotalNone">Storypoints da sprint (modo sem dados manuais)</label>
+      <input
+        type="number"
+        id="storypointsTotalNone"
+        name="storypoints_total"
+        min="0"
+        step="0.01"
+        inputmode="decimal"
+        placeholder="Ex.: 198"
+      />
+      <p class="paste-hint">
+        Preencha apenas neste modo. Esse valor alimenta o KPI de Storypoints e o Burndown de Storypoints.
+        <strong>Recomendado:</strong> usar <strong>Com planilha manual</strong> para máxima precisão.
+      </p>
+    </div>
+
     <!-- Submit -->
     <button class="btn" type="submit" id="submitBtn" disabled>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -1155,12 +1234,28 @@ const baseUploadSection = document.getElementById("baseUploadSection");
 const manualSection = document.getElementById("manualSection");
 const btnValidateBase = document.getElementById("btnValidateBase");
 const baseValidationMsg = document.getElementById("baseValidationMsg");
+const storypointsNoneField = document.getElementById("storypointsNoneField");
+const storypointsTotalNone = document.getElementById("storypointsTotalNone");
 const formPresetBox = document.getElementById("formPresetBox");
 const formPresetMeta = document.getElementById("formPresetMeta");
 const btnLoadLastForm = document.getElementById("btnLoadLastForm");
+const btnClearManualForm = document.getElementById("btnClearManualForm");
+const gpPlannProjetoPaste = document.getElementById("gpPlannProjetoPaste");
+const ppPreviewWrap = document.getElementById("ppPreviewWrap");
+const ppPreviewMeta = document.getElementById("ppPreviewMeta");
+const ppPreviewTable = document.getElementById("ppPreviewTable");
 let selectedMode = null;
 let baseValidated = false;
 let baseValidationLoading = false;
+
+function ensurePlannProjetoPreviewOrder() {
+  if (!ppPreviewWrap || !gpPlannProjetoPaste) return;
+  const parent = gpPlannProjetoPaste.parentElement;
+  if (!parent) return;
+  if (ppPreviewWrap.nextElementSibling === gpPlannProjetoPaste) return;
+  parent.insertBefore(ppPreviewWrap, gpPlannProjetoPaste);
+}
+ensurePlannProjetoPreviewOrder();
 
 /* ── Drop zone (arquivo principal) ── */
 dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.classList.add("dragover"); });
@@ -1381,12 +1476,15 @@ function enterWorkflow(mode) {
   if (mode === "none") {
     manualSection.style.display = "none";
     if (btnValidateBase) btnValidateBase.style.display = "none";
+    if (storypointsNoneField) storypointsNoneField.style.display = "block";
     hideBaseValidationMsg();
     baseValidated = true;
     submitBtnLabel.textContent = "Gerar Dashboard Executivo";
   } else {
     manualSection.style.display = "none";
     if (btnValidateBase) btnValidateBase.style.display = "block";
+    if (storypointsNoneField) storypointsNoneField.style.display = "none";
+    if (storypointsTotalNone) storypointsTotalNone.value = "";
     baseValidated = false;
     showBaseValidationMsg("err", "Valide a planilha base para liberar a etapa 2.");
     submitBtnLabel.textContent = "Gerar Dashboard";
@@ -1405,6 +1503,8 @@ function backToModeSelection() {
   modeCards.forEach(c => c.classList.remove("active"));
   btnStartFlow.disabled = true;
   delete btnStartFlow.dataset.mode;
+  if (storypointsNoneField) storypointsNoneField.style.display = "none";
+  if (storypointsTotalNone) storypointsTotalNone.value = "";
   hideBaseValidationMsg();
   updateSubmitState();
 }
@@ -1489,6 +1589,10 @@ function setSectionStatus(sectionId, kind, text) {
   el.textContent = text || "";
 }
 
+function markSectionPending(sectionId, text = "Alteracoes nao salvas.") {
+  setSectionStatus(sectionId, "pending", text);
+}
+
 function openSection(sectionId) {
   const sec = document.getElementById(sectionId);
   if (!sec) return;
@@ -1505,7 +1609,7 @@ function ensureSectionSaveControls() {
     bar.className = "section-save-bar";
     bar.innerHTML = `
       <span class="section-save-status" id="${sec.id}SaveStatus"></span>
-      <button type="button" class="section-save-btn" data-sec-save="${sec.id}">Save()</button>
+      <button type="button" class="section-save-btn" data-sec-save="${sec.id}">Salvar</button>
     `;
     body.appendChild(bar);
   });
@@ -1629,7 +1733,15 @@ function validateAllFormSections(payload) {
 }
 
 function saveFormSection(sectionId) {
-  const payload = collectFormData();
+  let payload = null;
+  try {
+    payload = collectFormData();
+  } catch (err) {
+    const msg = err?.message || "Falha ao ler os dados do formulario.";
+    setSectionStatus(sectionId, "err", msg);
+    showError(`${sectionLabel(sectionId)}: ${msg}`);
+    return false;
+  }
   const check = validateFormSection(sectionId, payload);
   if (!check.ok) {
     setSectionStatus(sectionId, "err", check.msg);
@@ -1673,8 +1785,22 @@ document.querySelectorAll(".paste-toggle").forEach(btn => {
 });
 document.querySelectorAll(".btn-clear-paste").forEach(btn => {
   btn.addEventListener("click", () => {
-    const ta = document.getElementById(btn.dataset.clear);
-    if (ta) ta.value = "";
+    const id = btn.dataset.clear;
+    const ta = document.getElementById(id);
+    if (!ta) return;
+    ta.value = "";
+    if (id === "gpPlannProjetoPaste") {
+      renderPlannProjetoPreview([]);
+      markSectionPending("secPlannProjeto");
+    } else if (id === "pastePSArea") {
+      markSectionPending("secPlannSprint");
+    } else if (id === "pasteDispArea") {
+      markSectionPending("secDisponibilidade");
+    } else if (id === "pasteTransArea") {
+      markSectionPending("secTransversalidade");
+    } else if (id === "pasteRoadmapArea") {
+      markSectionPending("secRoadmap");
+    }
   });
 });
 
@@ -1713,10 +1839,17 @@ function renderPlannSprintTable() {
   });
 
   huRow.querySelectorAll(".hu-col-input").forEach(inp =>
-    inp.addEventListener("input", () => { plannHus[+inp.dataset.huIdx] = inp.value.trim().toUpperCase(); })
+    inp.addEventListener("input", () => {
+      plannHus[+inp.dataset.huIdx] = inp.value.trim().toUpperCase();
+      markSectionPending("secPlannSprint");
+    })
   );
   huRow.querySelectorAll(".btn-remove-hu").forEach(btn =>
-    btn.addEventListener("click", () => { plannHus.splice(+btn.dataset.huIdx, 1); renderPlannSprintTable(); })
+    btn.addEventListener("click", () => {
+      plannHus.splice(+btn.dataset.huIdx, 1);
+      renderPlannSprintTable();
+      markSectionPending("secPlannSprint");
+    })
   );
 
   const tbody = document.getElementById("plannSprintBody");
@@ -1744,6 +1877,7 @@ function renderPlannSprintTable() {
 document.getElementById("btnAddHu").addEventListener("click", () => {
   plannHus.push("HU" + String(plannHus.length + 1).padStart(3, "0"));
   renderPlannSprintTable();
+  markSectionPending("secPlannSprint");
 });
 renderPlannSprintTable();
 
@@ -1856,18 +1990,82 @@ function normalizePlannProjetoMatrixSafe(matrix) {
   return matrix.map((row, idx) => [labels[idx] ?? "", ...(Array.isArray(row) ? row : [])]);
 }
 
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderPlannProjetoPreview(matrix) {
+  if (!ppPreviewWrap || !ppPreviewMeta || !ppPreviewTable) return;
+  const rows = Array.isArray(matrix)
+    ? matrix.filter(r => Array.isArray(r) && r.some(c => String(c || "").trim()))
+    : [];
+
+  if (!rows.length) {
+    ppPreviewWrap.classList.remove("active");
+    ppPreviewTable.innerHTML = "";
+    ppPreviewMeta.textContent = "Pre-visualizacao indisponivel.";
+    return;
+  }
+
+  const totalCols = rows.reduce((acc, r) => Math.max(acc, Array.isArray(r) ? r.length : 0), 0);
+  const maxRows = 10;
+  const maxCols = 8;
+  const viewRows = rows.slice(0, maxRows);
+  const viewCols = Math.min(totalCols, maxCols);
+
+  let html = "<thead><tr>";
+  for (let c = 0; c < viewCols; c++) html += `<th>C${c + 1}</th>`;
+  html += "</tr></thead><tbody>";
+
+  viewRows.forEach(row => {
+    html += "<tr>";
+    for (let c = 0; c < viewCols; c++) {
+      html += `<td>${escapeHtml((row && row[c]) || "")}</td>`;
+    }
+    html += "</tr>";
+  });
+  html += "</tbody>";
+  ppPreviewTable.innerHTML = html;
+
+  const extraRows = rows.length - viewRows.length;
+  const extraCols = totalCols - viewCols;
+  let meta = `Pre-visualizacao: ${rows.length} linha(s) x ${totalCols} coluna(s).`;
+  if (extraRows > 0 || extraCols > 0) {
+    meta += ` Exibindo ${viewRows.length}x${viewCols}.`;
+  }
+  ppPreviewMeta.textContent = meta;
+  ppPreviewWrap.classList.add("active");
+}
+
+function refreshPlannProjetoPreviewFromTextarea() {
+  const raw = (gpPlannProjetoPaste?.value || "").trim();
+  if (!raw) {
+    renderPlannProjetoPreview([]);
+    return;
+  }
+  const matrix = normalizePlannProjetoMatrixSafe(parseTSV(raw));
+  renderPlannProjetoPreview(matrix);
+}
+
 /* ── Apply paste: Plann Projeto ── */
 document.querySelector('[data-apply="PP"]').addEventListener("click", () => {
-  const text = document.getElementById("gpPlannProjetoPaste").value;
+  const text = gpPlannProjetoPaste.value;
   if (!text.trim()) return;
   const rows = parseTSV(text);
   const normalized = normalizePlannProjetoMatrixSafe(rows);
   const shifted = normalized !== rows;
   if (shifted) {
-    document.getElementById("gpPlannProjetoPaste").value = normalized
+    gpPlannProjetoPaste.value = normalized
       .map(row => (Array.isArray(row) ? row.join("\t") : ""))
       .join("\n");
   }
+  renderPlannProjetoPreview(normalized);
+  markSectionPending("secPlannProjeto");
   const st = document.getElementById("pastePP-status");
   st.textContent = shifted
     ? `OK ${normalized.length} linha(s) prontas (coluna de media removida automaticamente)`
@@ -1875,6 +2073,13 @@ document.querySelector('[data-apply="PP"]').addEventListener("click", () => {
   st.classList.add("visible");
   setTimeout(() => st.classList.remove("visible"), 3000);
 });
+
+if (gpPlannProjetoPaste) {
+  gpPlannProjetoPaste.addEventListener("input", () => {
+    refreshPlannProjetoPreviewFromTextarea();
+    markSectionPending("secPlannProjeto");
+  });
+}
 
 /* ── Apply paste: Plann Sprint ── */
 document.querySelector('[data-apply="PS"]').addEventListener("click", () => {
@@ -1931,6 +2136,7 @@ document.querySelector('[data-apply="PS"]').addEventListener("click", () => {
       if (v !== undefined) inp.value = parseFloat(v) || 0;
     });
   });
+  markSectionPending("secPlannSprint");
 
   const st = document.getElementById("pastePS-status");
   st.textContent = `✓ ${dataRows.length} linha(s) importada(s)`;
@@ -1944,19 +2150,26 @@ document.querySelector('[data-apply="PS"]').addEventListener("click", () => {
 function addDispRow(s, e, n, p) {
   const tbody = document.getElementById("dispBody");
   const tr = document.createElement("tr");
+  const pctVal = p == null ? "" : String(p).trim();
   tr.innerHTML = `
     <td><input type="text" placeholder="Ex: Alocado" value="${s||''}" /></td>
     <td><input type="text" placeholder="Órgão/Empresa" value="${e||''}" /></td>
     <td><input type="text" placeholder="Nome completo" value="${n||''}" /></td>
-    <td><input type="number" min="0" max="100" placeholder="100" value="${p!=null&&p!==''?p:''}" /></td>
+    <td><input type="text" class="pct-input" inputmode="decimal" placeholder="100 ou 100%" value="${pctVal}" /></td>
     <td class="col-remove"><button type="button" class="btn-remove-row" title="Remover">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
       </svg></button></td>`;
-  tr.querySelector(".btn-remove-row").addEventListener("click", () => tr.remove());
+  tr.querySelector(".btn-remove-row").addEventListener("click", () => {
+    tr.remove();
+    markSectionPending("secDisponibilidade");
+  });
   tbody.appendChild(tr);
 }
-document.getElementById("btnAddDisp").addEventListener("click", () => addDispRow());
+document.getElementById("btnAddDisp").addEventListener("click", () => {
+  addDispRow();
+  markSectionPending("secDisponibilidade");
+});
 addDispRow();
 
 document.querySelector('[data-apply="Disp"]').addEventListener("click", () => {
@@ -1971,6 +2184,7 @@ document.querySelector('[data-apply="Disp"]').addEventListener("click", () => {
     addDispRow(row[0]||"", row[1]||"", row[2]||"", row[3]||"");
     imported++;
   });
+  markSectionPending("secDisponibilidade");
   const st = document.getElementById("pasteDisp-status");
   st.textContent = `✓ ${imported} linha(s) importada(s)`;
   st.classList.add("visible");
@@ -1992,10 +2206,16 @@ function addTransRow(n, f, s, i) {
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
       </svg></button></td>`;
-  tr.querySelector(".btn-remove-row").addEventListener("click", () => tr.remove());
+  tr.querySelector(".btn-remove-row").addEventListener("click", () => {
+    tr.remove();
+    markSectionPending("secTransversalidade");
+  });
   tbody.appendChild(tr);
 }
-document.getElementById("btnAddTrans").addEventListener("click", () => addTransRow());
+document.getElementById("btnAddTrans").addEventListener("click", () => {
+  addTransRow();
+  markSectionPending("secTransversalidade");
+});
 addTransRow();
 
 document.querySelector('[data-apply="Trans"]').addEventListener("click", () => {
@@ -2009,6 +2229,7 @@ document.querySelector('[data-apply="Trans"]').addEventListener("click", () => {
     addTransRow(row[0]||"", row[1]||"", row[2]||"", row[3]||"");
     imported++;
   });
+  markSectionPending("secTransversalidade");
   const st = document.getElementById("pasteTrans-status");
   st.textContent = `✓ ${imported} linha(s) importada(s)`;
   st.classList.add("visible");
@@ -2028,10 +2249,16 @@ function addRoadmapRow(m, p) {
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
       </svg></button></td>`;
-  tr.querySelector(".btn-remove-row").addEventListener("click", () => tr.remove());
+  tr.querySelector(".btn-remove-row").addEventListener("click", () => {
+    tr.remove();
+    markSectionPending("secRoadmap");
+  });
   tbody.appendChild(tr);
 }
-document.getElementById("btnAddRoadmap").addEventListener("click", () => addRoadmapRow());
+document.getElementById("btnAddRoadmap").addEventListener("click", () => {
+  addRoadmapRow();
+  markSectionPending("secRoadmap");
+});
 addRoadmapRow();
 
 document.querySelector('[data-apply="Roadmap"]').addEventListener("click", () => {
@@ -2045,6 +2272,7 @@ document.querySelector('[data-apply="Roadmap"]').addEventListener("click", () =>
     addRoadmapRow(row[0]||"", row[1]||"");
     imported++;
   });
+  markSectionPending("secRoadmap");
   const st = document.getElementById("pasteRoadmap-status");
   st.textContent = `✓ ${imported} marco(s) importado(s)`;
   st.classList.add("visible");
@@ -2140,6 +2368,50 @@ function saveLastFormPreset(data) {
   } catch (_) {}
 }
 
+function clearManualFormState() {
+  document.getElementById("gpProjeto").value = "";
+  document.getElementById("gpGerente").value = "";
+  document.getElementById("gpLinkedin").value = "";
+  document.getElementById("gpProductGoal").value = "";
+  document.getElementById("gpSprintGoal").value = "";
+
+  plannHus = ["HU001", "HU002"];
+  renderPlannSprintTable();
+
+  const dispBody = document.getElementById("dispBody");
+  if (dispBody) {
+    dispBody.innerHTML = "";
+    addDispRow();
+  }
+
+  const transBody = document.getElementById("transBody");
+  if (transBody) {
+    transBody.innerHTML = "";
+    addTransRow();
+  }
+
+  const roadmapBody = document.getElementById("roadmapBody");
+  if (roadmapBody) {
+    roadmapBody.innerHTML = "";
+    addRoadmapRow();
+  }
+
+  if (gpPlannProjetoPaste) gpPlannProjetoPaste.value = "";
+  renderPlannProjetoPreview([]);
+
+  ["pastePSArea", "pasteDispArea", "pasteTransArea", "pasteRoadmapArea"].forEach(id => {
+    const ta = document.getElementById(id);
+    if (ta) ta.value = "";
+  });
+  document.querySelectorAll(".paste-zone.open").forEach(z => z.classList.remove("open"));
+  document.querySelectorAll(".paste-status").forEach(s => {
+    s.textContent = "";
+    s.classList.remove("visible");
+  });
+
+  FORM_SECTION_IDS.forEach(id => setSectionStatus(id, "pending", "Formulario limpo. Salve para registrar."));
+}
+
 function refreshPresetInfo() {
   const preset = readLastFormPreset();
   if (!formPresetBox || !formPresetMeta) return;
@@ -2210,8 +2482,9 @@ function applyFormPreset(data) {
   const ppRaw = data.plann_projeto && Array.isArray(data.plann_projeto.matrix)
     ? data.plann_projeto.matrix : [];
   const pp = normalizePlannProjetoMatrixSafe(ppRaw);
-  document.getElementById("gpPlannProjetoPaste").value =
+  gpPlannProjetoPaste.value =
     pp.map(row => (Array.isArray(row) ? row : []).join("\t")).join("\n");
+  renderPlannProjetoPreview(pp);
 
   FORM_SECTION_IDS.forEach(id => setSectionStatus(id, "ok", "Dados carregados do pre-salvo."));
 }
@@ -2236,6 +2509,19 @@ if (btnLoadLastForm) {
   });
 }
 
+if (btnClearManualForm) {
+  btnClearManualForm.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const ok = window.confirm("Limpar todo o formulario manual atual? Os dados pre-salvos continuarao disponiveis.");
+    if (!ok) return;
+    clearManualFormState();
+    updateSubmitState();
+    showSuccess("Formulario manual limpo.");
+  });
+}
+refreshPlannProjetoPreviewFromTextarea();
+
 /* ═══════════════════════════════════════
    Submit
 ═══════════════════════════════════════ */
@@ -2250,6 +2536,7 @@ form.addEventListener("submit", async e => {
 
   const fd = new FormData(form);
   fd.set("autor", buildAuthorValue());
+  if (selectedMode !== "none") fd.delete("storypoints_total");
 
   if (selectedMode === "none") fd.delete("dados_manuais");
   if (selectedMode === "dm" && !dmInput.files.length) {

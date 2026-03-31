@@ -1,0 +1,2326 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OnepageReport · Automação</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:        #004140;
+      --teal-light:  #005b59;
+      --orange:      #ED7D31;
+      --orange-dark: #c96520;
+      --bg:          #f3f6f5;
+      --card:        #ffffff;
+      --border:      #d4ddd9;
+      --text:        #1a2e2d;
+      --muted:       #5e7a78;
+      --error:       #d32f2f;
+      --success:     #2e7d32;
+    }
+
+    body {
+      font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem 1rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,65,64,0.08);
+      padding: 2.5rem 2.5rem 2rem;
+      width: 100%;
+      max-width: 540px;
+      transition: max-width 0.3s ease;
+    }
+    .card.card--wide { max-width: 860px; }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .logo {
+      width: 48px; height: 48px;
+      background: var(--teal); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .logo svg { width: 26px; height: 26px; fill: white; }
+    .header-text h1 { font-size: 1.25rem; font-weight: 700; color: var(--teal); line-height: 1.2; }
+    .header-text p  { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+
+    /* Fields */
+    .field { margin-bottom: 1.25rem; }
+    label {
+      display: block; font-size: 0.82rem; font-weight: 600;
+      color: var(--teal); margin-bottom: 0.4rem;
+      letter-spacing: 0.02em; text-transform: uppercase;
+    }
+    input[type="text"], input[type="number"] {
+      width: 100%; padding: 0.65rem 0.9rem;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 0.92rem; color: var(--text); background: var(--bg);
+      transition: border-color 0.2s; outline: none;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus { border-color: var(--teal); background: white; }
+    textarea {
+      width: 100%; padding: 0.65rem 0.9rem;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 0.88rem; color: var(--text); background: var(--bg);
+      transition: border-color 0.2s; outline: none;
+      resize: vertical; min-height: 70px; font-family: inherit;
+    }
+    textarea:focus { border-color: var(--teal); background: white; }
+
+    /* Toggle */
+    .toggle-wrap {
+      display: flex; align-items: center; gap: 0.35rem;
+      white-space: nowrap; margin-top: 0.4rem;
+      user-select: none; cursor: pointer;
+    }
+    .toggle-wrap input[type="checkbox"] { display: none; }
+    .toggle-switch {
+      width: 34px; height: 18px; border-radius: 9px;
+      background: var(--border); position: relative; flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .toggle-switch::after {
+      content: ''; position: absolute; left: 2px; top: 2px;
+      width: 14px; height: 14px; background: white;
+      border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+    input[type="checkbox"]:checked + .toggle-switch { background: var(--teal); }
+    input[type="checkbox"]:checked + .toggle-switch::after { transform: translateX(16px); }
+    .toggle-label { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
+
+    /* Divider */
+    .divider {
+      border: none; border-top: 1.5px solid var(--border);
+      margin: 1.25rem 0;
+    }
+
+    /* Tabs */
+    .tabs-label {
+      display: block; font-size: 0.82rem; font-weight: 600;
+      color: var(--teal); margin-bottom: 0.5rem;
+      letter-spacing: 0.02em; text-transform: uppercase;
+    }
+    .tabs-label span {
+      font-weight: 400; font-size: 0.75rem; color: var(--muted);
+      text-transform: none; letter-spacing: 0;
+    }
+    .tabs-bar {
+      display: flex; border: 1.5px solid var(--border);
+      border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem;
+    }
+    .tab-btn {
+      flex: 1; padding: 0.52rem 0.5rem;
+      background: var(--bg); border: none;
+      font-size: 0.8rem; font-weight: 500; color: var(--muted);
+      cursor: pointer; transition: background 0.18s, color 0.18s;
+      line-height: 1.3; border-right: 1.5px solid var(--border);
+    }
+    .tab-btn:last-child { border-right: none; }
+    .tab-btn.active { background: var(--teal); color: white; font-weight: 600; }
+    .tab-btn:not(.active):hover { background: #e8f2f1; color: var(--teal); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 14px;
+      background: var(--bg); padding: 2.2rem 1.5rem 1.8rem;
+      text-align: center; cursor: pointer;
+      transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+      position: relative; overflow: hidden;
+    }
+    .drop-zone::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,65,64,0.03) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--teal); background: #eaf2f1;
+      box-shadow: 0 0 0 4px rgba(0,65,64,0.07);
+    }
+    .drop-zone.has-file {
+      border-style: solid; border-color: var(--teal);
+      background: #eaf2f1; cursor: default;
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0;
+      cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone.has-file input[type="file"] { pointer-events: none; }
+    .dz-empty { transition: opacity 0.2s; }
+    .drop-zone.has-file .dz-empty { display: none; }
+    .dz-cloud {
+      width: 52px; height: 52px; margin: 0 auto 0.9rem;
+      background: rgba(0,65,64,0.08); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .drop-zone:hover .dz-cloud, .drop-zone.dragover .dz-cloud {
+      background: rgba(0,65,64,0.14); transform: translateY(-2px);
+    }
+    .dz-cloud svg { color: var(--teal); }
+    .dz-hint { font-size: 0.9rem; color: var(--muted); line-height: 1.55; }
+    .dz-hint strong { color: var(--teal); }
+    .dz-tag {
+      display: inline-block; margin-top: 0.6rem;
+      background: rgba(0,65,64,0.08); color: var(--teal);
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
+      padding: 0.2rem 0.6rem; border-radius: 99px;
+    }
+    .dz-file { display: none; }
+    .drop-zone.has-file .dz-file {
+      display: flex; align-items: center; gap: 0.9rem; text-align: left;
+    }
+    .dz-file-icon {
+      flex-shrink: 0; width: 42px; height: 48px;
+      background: var(--teal); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; position: relative;
+    }
+    .dz-file-icon::after {
+      content: 'XLS'; position: absolute; bottom: 5px;
+      font-size: 7px; font-weight: 800;
+      color: rgba(255,255,255,0.85); letter-spacing: 0.05em;
+    }
+    .dz-file-icon svg { color: white; opacity: 0.9; }
+    .dz-file-info { flex: 1; min-width: 0; }
+    .dz-file-name {
+      font-size: 0.88rem; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dz-file-sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .dz-remove {
+      flex-shrink: 0; background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: 4px; border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+      pointer-events: all !important; position: relative; z-index: 2;
+    }
+    .dz-remove:hover { color: var(--error); background: #fdecea; }
+
+    /* Drop zone sm (planilha manual) */
+    .drop-zone-sm {
+      border: 2px dashed var(--border); border-radius: 10px;
+      background: var(--bg); padding: 0.9rem 1.2rem; cursor: pointer;
+      transition: border-color 0.25s, background 0.25s;
+      position: relative; overflow: hidden;
+      display: flex; align-items: center; gap: 0.9rem;
+    }
+    .drop-zone-sm:hover, .drop-zone-sm.dragover {
+      border-color: var(--orange); background: #fef6f0;
+    }
+    .drop-zone-sm.has-file {
+      border-style: solid; border-color: var(--orange);
+      background: #fef6f0; cursor: default;
+    }
+    .drop-zone-sm input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone-sm.has-file input[type="file"] { pointer-events: none; }
+    .dz-sm-icon {
+      flex-shrink: 0; width: 36px; height: 36px;
+      background: rgba(237,125,49,0.1); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--orange); transition: background 0.2s;
+    }
+    .drop-zone-sm:hover .dz-sm-icon,
+    .drop-zone-sm.dragover .dz-sm-icon { background: rgba(237,125,49,0.18); }
+    .drop-zone-sm.has-file .dz-sm-icon { background: var(--orange); color: white; }
+    .dz-sm-text { flex: 1; min-width: 0; }
+    .dz-sm-title {
+      font-size: 0.84rem; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dz-sm-sub { font-size: 0.74rem; color: var(--muted); margin-top: 1px; }
+    .dz-sm-sub.hint { color: var(--orange); }
+    .dz-sm-remove {
+      flex-shrink: 0; background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: 4px; border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+      pointer-events: all !important; position: relative; z-index: 2; display: none;
+    }
+    .drop-zone-sm.has-file .dz-sm-remove { display: flex; }
+    .dz-sm-remove:hover { color: var(--error); background: #fdecea; }
+
+    /* Button */
+    .btn {
+      width: 100%; padding: 0.85rem; background: var(--teal);
+      color: white; font-size: 1rem; font-weight: 600;
+      border: none; border-radius: 10px; cursor: pointer;
+      transition: background 0.2s, transform 0.1s; margin-top: 0.75rem;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .btn:hover:not(:disabled) { background: var(--teal-light); }
+    .btn:active:not(:disabled) { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-fechar {
+      width: 100%; padding: 0.6rem; background: transparent;
+      color: var(--muted); font-size: 0.82rem; font-weight: 500;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      cursor: pointer; margin-top: 0.6rem;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .btn-fechar:hover { color: var(--error); border-color: #f5c6c6; background: #fdecea; }
+
+    /* Status */
+    .status {
+      display: none; margin-top: 1rem; padding: 0.8rem 1rem;
+      border-radius: 8px; font-size: 0.88rem; line-height: 1.5;
+    }
+    .status.loading {
+      align-items: center; gap: 0.6rem;
+      background: #e8f4f4; color: var(--teal); border: 1px solid #b2d8d7;
+    }
+    .status.error   { background: #fdecea; color: var(--error); border: 1px solid #f5c6c6; }
+    .status.success { background: #e8f5e9; color: var(--success); border: 1px solid #b2dfb4; }
+    .spinner {
+      width: 18px; height: 18px; flex-shrink: 0;
+      border: 2.5px solid #b2d8d7; border-top-color: var(--teal);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Warnings */
+    .warnings-panel {
+      display: none; margin-top: 1rem; border-radius: 10px;
+      overflow: hidden; border: 1px solid #f5c6c6; font-size: 0.84rem;
+    }
+    .warnings-panel.has-warns { display: block; }
+    .warnings-panel.only-info { border-color: #b2d8d7; }
+    .warnings-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.55rem 0.9rem; background: #fff4f0; color: #8b3000;
+      font-weight: 600; font-size: 0.8rem; letter-spacing: 0.03em;
+      cursor: pointer; user-select: none;
+    }
+    .warnings-panel.only-info .warnings-header { background: #e8f4f4; color: var(--teal); }
+    .warnings-header-left { display: flex; align-items: center; gap: 0.5rem; }
+    .warnings-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 18px; height: 18px; padding: 0 4px;
+      background: #ED7D31; color: white;
+      border-radius: 99px; font-size: 0.72rem; font-weight: 700;
+    }
+    .warnings-panel.only-info .warnings-badge { background: var(--teal); }
+    .warnings-toggle { font-size: 0.75rem; color: inherit; opacity: 0.7; }
+    .warnings-body { background: #fffaf8; border-top: 1px solid #f5c6c6; padding: 0.5rem 0; }
+    .warnings-panel.only-info .warnings-body { background: #f5fafa; border-color: #b2d8d7; }
+    .warn-item {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      padding: 0.45rem 0.9rem; font-size: 0.82rem; line-height: 1.5; color: #333;
+    }
+    .warn-item + .warn-item { border-top: 1px solid rgba(0,0,0,0.06); }
+    .warn-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
+    .warn-dot.erro  { background: #d32f2f; }
+    .warn-dot.aviso { background: #ED7D31; }
+    .warn-dot.info  { background: var(--teal); }
+
+    /* Footer */
+    .note { margin-top: 1.5rem; font-size: 0.78rem; color: var(--muted); text-align: center; line-height: 1.6; }
+    .note a { color: var(--orange); text-decoration: none; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal {
+      background: white; border-radius: 14px; padding: 2rem;
+      max-width: 340px; width: 90%; text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .modal h2 { font-size: 1.05rem; color: var(--text); margin-bottom: 0.5rem; }
+    .modal p  { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem; }
+    .modal-btns { display: flex; gap: 0.75rem; }
+    .modal-btns button {
+      flex: 1; padding: 0.7rem; border-radius: 8px; border: none;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-cancelar  { background: var(--bg); color: var(--text); border: 1.5px solid var(--border) !important; }
+    .btn-confirmar { background: var(--error); color: white; }
+
+    /* ══ FORMULÁRIO GP ══ */
+    .gp-section {
+      border: 1.5px solid var(--border); border-radius: 10px;
+      overflow: hidden; margin-bottom: 0.75rem;
+    }
+    .gp-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.65rem 1rem; background: rgba(0,65,64,0.04);
+      cursor: pointer; user-select: none;
+      border-bottom: 1.5px solid transparent; transition: background 0.15s;
+    }
+    .gp-section-header:hover { background: rgba(0,65,64,0.08); }
+    .gp-section.open .gp-section-header { border-bottom-color: var(--border); }
+    .gp-section-title {
+      font-size: 0.82rem; font-weight: 700; color: var(--teal);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .gp-section-badge {
+      font-size: 0.7rem; font-weight: 600; color: var(--muted);
+      text-transform: none; letter-spacing: 0;
+      background: var(--bg); border: 1px solid var(--border);
+      padding: 0.1rem 0.45rem; border-radius: 99px;
+    }
+    .gp-section-arrow { font-size: 0.75rem; color: var(--muted); transition: transform 0.2s; }
+    .gp-section.open .gp-section-arrow { transform: rotate(180deg); }
+    .gp-section-body { display: none; padding: 1rem; }
+    .gp-section.open .gp-section-body { display: block; }
+
+    .gp-field { margin-bottom: 0.9rem; }
+    .gp-field:last-child { margin-bottom: 0; }
+    .gp-label {
+      display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted);
+      margin-bottom: 0.3rem; letter-spacing: 0.03em; text-transform: uppercase;
+    }
+    .gp-field input[type="text"],
+    .gp-field input[type="number"],
+    .gp-field textarea { font-size: 0.86rem; }
+    .gp-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    /* Tabelas */
+    .gp-table-wrap {
+      overflow-x: auto; border-radius: 8px; border: 1px solid var(--border);
+    }
+    .gp-table {
+      width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 350px;
+    }
+    .gp-table th {
+      background: rgba(0,65,64,0.06); color: var(--teal);
+      font-weight: 700; font-size: 0.72rem; letter-spacing: 0.04em;
+      text-transform: uppercase; padding: 0.45rem 0.7rem;
+      text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .gp-table td {
+      padding: 0.3rem 0.45rem; border-bottom: 1px solid rgba(0,0,0,0.05);
+      vertical-align: middle;
+    }
+    .gp-table tr:last-child td { border-bottom: none; }
+    .gp-table tr:nth-child(even) td { background: rgba(0,65,64,0.02); }
+    .gp-table input[type="text"],
+    .gp-table input[type="number"] {
+      width: 100%; padding: 0.28rem 0.45rem;
+      border: 1.5px solid transparent; border-radius: 6px;
+      font-size: 0.82rem; background: transparent;
+      transition: border-color 0.15s, background 0.15s; min-width: 55px;
+    }
+    .gp-table input[type="text"]:focus,
+    .gp-table input[type="number"]:focus {
+      border-color: var(--teal); background: white; outline: none;
+    }
+    .gp-table input[type="number"] { text-align: center; max-width: 75px; }
+    .role-cell {
+      font-size: 0.78rem; color: var(--text); font-weight: 500;
+      white-space: nowrap; padding-left: 0.7rem; min-width: 180px;
+    }
+    .col-remove { width: 30px; text-align: center; }
+    .btn-remove-row {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: 3px; border-radius: 5px;
+      transition: color 0.15s, background 0.15s;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .btn-remove-row:hover { color: var(--error); background: #fdecea; }
+
+    /* HU columns */
+    .hu-col-input {
+      background: transparent; border: 1.5px solid rgba(0,65,64,0.2);
+      border-radius: 5px; padding: 0.22rem 0.35rem;
+      font-size: 0.72rem; font-weight: 700;
+      color: var(--teal); text-transform: uppercase;
+      letter-spacing: 0.04em; width: 85px; text-align: center;
+      outline: none; transition: border-color 0.15s, background 0.15s;
+    }
+    .hu-col-input:focus { border-color: var(--teal); background: white; }
+    .btn-add-hu {
+      background: none; border: 1.5px dashed var(--border); border-radius: 6px;
+      padding: 0.22rem 0.55rem; font-size: 0.74rem; color: var(--muted);
+      cursor: pointer; transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+    }
+    .btn-add-hu:hover { color: var(--teal); border-color: var(--teal); }
+    .btn-remove-hu {
+      background: none; border: none; cursor: pointer;
+      color: rgba(0,65,64,0.3); font-size: 0.6rem;
+      padding: 0; margin-left: 2px; line-height: 1;
+      transition: color 0.15s;
+    }
+    .btn-remove-hu:hover { color: var(--error); }
+    .hu-th-wrap { display: flex; align-items: center; justify-content: center; gap: 2px; }
+    .btn-add-row {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      margin-top: 0.6rem; padding: 0.32rem 0.7rem;
+      background: none; border: 1.5px dashed var(--border);
+      border-radius: 7px; font-size: 0.78rem; color: var(--muted);
+      cursor: pointer; transition: color 0.15s, border-color 0.15s; font-family: inherit;
+    }
+    .btn-add-row:hover { color: var(--teal); border-color: var(--teal); }
+
+    /* Paste zone */
+    .paste-toggle {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      font-size: 0.75rem; color: var(--muted);
+      background: none; border: none; cursor: pointer;
+      padding: 0.25rem 0; margin-top: 0.5rem;
+      font-family: inherit; transition: color 0.15s;
+    }
+    .paste-toggle:hover { color: var(--teal); }
+    .paste-toggle svg { flex-shrink: 0; }
+    .paste-zone {
+      display: none; margin-top: 0.5rem;
+      background: rgba(0,65,64,0.03); border: 1.5px dashed var(--border);
+      border-radius: 8px; padding: 0.75rem;
+    }
+    .paste-zone.open { display: block; }
+    .paste-hint {
+      font-size: 0.72rem; color: var(--muted); margin-bottom: 0.4rem; line-height: 1.5;
+    }
+    .paste-hint strong { color: var(--teal); }
+    .paste-textarea {
+      width: 100%; min-height: 80px; padding: 0.45rem 0.6rem;
+      border: 1.5px solid var(--border); border-radius: 7px;
+      font-size: 0.8rem; font-family: 'Consolas', 'Courier New', monospace;
+      background: white; resize: vertical; outline: none;
+      color: var(--text); transition: border-color 0.2s;
+    }
+    .paste-textarea:focus { border-color: var(--teal); }
+    .paste-actions {
+      display: flex; gap: 0.5rem; margin-top: 0.45rem; align-items: center;
+    }
+    .btn-apply-paste {
+      padding: 0.32rem 0.85rem; background: var(--teal); color: white;
+      border: none; border-radius: 7px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: background 0.15s; font-family: inherit;
+    }
+    .btn-apply-paste:hover { background: var(--teal-light); }
+    .btn-clear-paste {
+      padding: 0.32rem 0.65rem; background: none; color: var(--muted);
+      border: 1.5px solid var(--border); border-radius: 7px;
+      font-size: 0.8rem; cursor: pointer; font-family: inherit;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-clear-paste:hover { color: var(--error); border-color: #f5c6c6; }
+    .paste-status {
+      font-size: 0.74rem; color: var(--success); display: none;
+    }
+    .paste-status.visible { display: inline; }
+
+    .form-tab-info {
+      font-size: 0.78rem; color: var(--muted);
+      background: rgba(0,65,64,0.04); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.6rem 0.9rem;
+      margin-bottom: 0.75rem; line-height: 1.5;
+    }
+
+    /* "Sem dados" placeholder */
+    .pane-none-msg {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.85rem 1rem; border: 1.5px dashed var(--border);
+      border-radius: 10px; background: rgba(0,65,64,0.02);
+      font-size: 0.83rem; color: var(--muted); line-height: 1.5;
+    }
+    .pane-none-msg svg { flex-shrink: 0; color: var(--border); }
+
+    /* Wizard mode selection */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+      margin-top: 0.45rem;
+    }
+    .mode-card {
+      width: 100%;
+      text-align: left;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      padding: 0.7rem 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+    }
+    .mode-card:hover {
+      border-color: var(--teal);
+      background: #eef4f3;
+    }
+    .mode-card.active {
+      border-color: var(--teal);
+      background: #e8f2f1;
+      box-shadow: 0 0 0 3px rgba(0,65,64,0.08);
+    }
+    .mode-title {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--teal);
+    }
+    .mode-desc {
+      margin-top: 0.2rem;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .wizard-head {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      margin-bottom: 0.8rem;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f8fbfa;
+    }
+    .wizard-head.active { display: flex; }
+    .wizard-mode-label {
+      font-size: 0.82rem;
+      color: var(--teal);
+      font-weight: 600;
+    }
+    .btn-link {
+      border: none;
+      background: none;
+      color: var(--orange);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+    }
+    .btn-link:hover { color: var(--orange-dark); text-decoration: underline; }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 0.64rem;
+      margin-top: 0.65rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--teal);
+      background: #e8f2f1;
+      color: var(--teal);
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s, border-color 0.18s;
+    }
+    .btn-secondary:hover { background: #dff0ee; }
+    .btn-secondary:disabled { opacity: 0.55; cursor: not-allowed; }
+    .base-validation-msg {
+      display: none;
+      margin-top: 0.55rem;
+      border-radius: 8px;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      border: 1px solid transparent;
+    }
+    .base-validation-msg.ok {
+      display: block;
+      background: #e8f5e9;
+      border-color: #b2dfb4;
+      color: #1f6f2a;
+    }
+    .base-validation-msg.err {
+      display: block;
+      background: #fdecea;
+      border-color: #f5c6c6;
+      color: var(--error);
+    }
+    .form-preset-box {
+      display: none;
+      margin-bottom: 0.75rem;
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fbfa;
+      font-size: 0.77rem;
+      color: var(--muted);
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+    }
+    .form-preset-box.active { display: flex; }
+
+    .section-save-bar {
+      margin-top: 0.75rem;
+      padding-top: 0.65rem;
+      border-top: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .section-save-btn {
+      border: 1.5px solid var(--teal);
+      background: #e8f2f1;
+      color: var(--teal);
+      border-radius: 7px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 0.28rem 0.62rem;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+    }
+    .section-save-btn:hover { background: #dff0ee; }
+    .section-save-status {
+      font-size: 0.74rem;
+      color: var(--muted);
+      min-height: 1em;
+    }
+    .section-save-status.ok { color: var(--success); font-weight: 600; }
+    .section-save-status.err { color: var(--error); font-weight: 600; }
+    .section-save-status.pending { color: var(--orange-dark); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="card" id="mainCard">
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 3h18v4H3V3zm0 6h12v4H3V9zm0 6h8v4H3v-4zm14 1l3 3-3 3v-2h-4v-2h4v-2z"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>OnepageReport Automação</h1>
+      <p>One Page Report · Geração automática</p>
+    </div>
+  </div>
+
+  <form id="form">
+
+    <div class="field" id="modePage">
+      <span class="tabs-label">Escolha o modo de geração</span>
+      <div class="mode-grid">
+        <button class="mode-card" type="button" data-mode-card="none">
+          <div class="mode-title">Sem dados manuais</div>
+          <div class="mode-desc">Gera somente com o Excel base (dashboard executivo).</div>
+        </button>
+        <button class="mode-card" type="button" data-mode-card="dm">
+          <div class="mode-title">Com planilha manual</div>
+          <div class="mode-desc">Valida a base e depois solicita a planilha manual para mesclagem.</div>
+        </button>
+        <button class="mode-card" type="button" data-mode-card="form">
+          <div class="mode-title">Com formulário</div>
+          <div class="mode-desc">Valida a base e depois libera o formulário para preencher os dados manuais.</div>
+        </button>
+      </div>
+      <button class="btn-secondary" type="button" id="btnStartFlow" disabled>Continuar</button>
+    </div>
+
+    <div class="wizard-head" id="wizardHead">
+      <span class="wizard-mode-label" id="wizardModeLabel">Modo selecionado</span>
+      <button type="button" class="btn-link" id="btnTrocarModo">Trocar modo</button>
+    </div>
+
+    <div id="workflowPage" style="display:none">
+
+    <!-- ① Dados manuais (escolha do modo — PRIMEIRO) -->
+    <div class="field" id="manualSection">
+      <span class="tabs-label">Modo de geração</span>
+
+      <div class="tabs-bar">
+        <button class="tab-btn active" type="button" id="tabBtnNone" data-tab="none">Sem dados manuais</button>
+        <button class="tab-btn"        type="button" id="tabBtnDM"   data-tab="dm">Com planilha manual</button>
+        <button class="tab-btn"        type="button" id="tabBtnForm" data-tab="form">Com formulário</button>
+      </div>
+
+      <!-- Sem dados -->
+      <div class="tab-pane active" id="paneNone">
+        <div class="pane-none-msg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+          <span>Roadmap e tabelas manuais serão mantidos do <strong>template padrão</strong>. Apenas o arquivo base será processado.</span>
+        </div>
+      </div>
+
+      <!-- Planilha manual -->
+      <div class="tab-pane" id="paneDm">
+        <div class="drop-zone-sm" id="dropZoneDM">
+          <input type="file" name="dados_manuais" id="dmInput" accept=".xlsx" />
+          <div class="dz-sm-icon" id="dmIcon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="13" x2="12" y2="17"/>
+              <line x1="10" y1="15" x2="14" y2="15"/>
+            </svg>
+          </div>
+          <div class="dz-sm-text">
+            <div class="dz-sm-title" id="dmFileName">Clique para selecionar os dados manuais</div>
+            <div class="dz-sm-sub hint" id="dmFileSub">Excel manual com abas gp_* (gp_Plann_Projeto, gp_Plann_Sprint, gp_Cabecalhos, gp_Disponibilidade, gp_Transversalidade, gp_Roadmap)</div>
+          </div>
+          <button class="dz-sm-remove" id="dmRemove" type="button" title="Remover">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div style="margin-top:0.5rem;text-align:right;">
+          <a href="/baixar-starter" style="font-size:0.75rem;color:var(--orange);text-decoration:none;font-weight:600;">↓ Baixar modelo manual</a>
+        </div>
+      </div>
+
+      <!-- Formulário GP -->
+      <div class="tab-pane" id="paneForm">
+        <div class="form-preset-box" id="formPresetBox">
+          <span id="formPresetMeta">Pre-preenchimento disponivel.</span>
+          <button type="button" class="btn-link" id="btnLoadLastForm">Usar</button>
+        </div>
+        <p class="form-tab-info">
+          Preencha abaixo os dados das abas <strong>gp_*</strong>. Deixe em branco o que quiser manter do template padrão.
+          Em cada seção você pode <strong>colar diretamente da sua planilha</strong> (Ctrl+V).
+        </p>
+
+        <!-- 1. Cabeçalhos -->
+        <div class="gp-section open" id="secCabecalhos">
+          <div class="gp-section-header" data-section="secCabecalhos">
+            <span class="gp-section-title">Cabeçalhos <span class="gp-section-badge">gp_Cabecalhos</span></span>
+            <span class="gp-section-arrow">▾</span>
+          </div>
+          <div class="gp-section-body">
+            <div class="gp-grid-2">
+              <div class="gp-field">
+                <label class="gp-label">Projeto</label>
+                <input type="text" id="gpProjeto" placeholder="Nome do projeto" />
+              </div>
+              <div class="gp-field">
+                <label class="gp-label">Gerente</label>
+                <input type="text" id="gpGerente" placeholder="Nome do GP" />
+              </div>
+            </div>
+            <div class="gp-field">
+              <label class="gp-label">LinkedIn</label>
+              <input type="text" id="gpLinkedin" placeholder="URL do LinkedIn" />
+            </div>
+            <div class="gp-field">
+              <label class="gp-label">Product Goal (Objetivo do Projeto)</label>
+              <textarea id="gpProductGoal" rows="2" placeholder="Descreva o objetivo geral do produto/projeto…"></textarea>
+            </div>
+            <div class="gp-field">
+              <label class="gp-label">Sprint Goal (Objetivo da Sprint)</label>
+              <textarea id="gpSprintGoal" rows="2" placeholder="Descreva o objetivo desta sprint…"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Planejamento da Sprint -->
+        <div class="gp-section" id="secPlannSprint">
+          <div class="gp-section-header" data-section="secPlannSprint">
+            <span class="gp-section-title">Planejamento da Sprint <span class="gp-section-badge">gp_Plann_Sprint</span></span>
+            <span class="gp-section-arrow">▾</span>
+          </div>
+          <div class="gp-section-body">
+            <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.6rem;">
+              Story points por HU e perfil. Edite os nomes das HUs e preencha os valores.
+            </p>
+            <div class="gp-table-wrap">
+              <table class="gp-table" id="plannSprintTable">
+                <thead>
+                  <tr class="hu-header-row" id="plannSprintHuRow">
+                    <th style="min-width:185px;">Perfil</th>
+                    <th id="plannSprintAddHuTh" style="width:52px;text-align:center;">
+                      <button type="button" class="btn-add-hu" id="btnAddHu">+ HU</button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="plannSprintBody"></tbody>
+              </table>
+            </div>
+            <!-- Paste zone para Plann Sprint -->
+            <button type="button" class="paste-toggle" data-paste="pastePS">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Colar da planilha
+            </button>
+            <div class="paste-zone" id="pastePS">
+              <p class="paste-hint">
+                Copie do Excel: <strong>1ª linha</strong> = nomes das HUs (ex: HU001, HU002…) · <strong>demais linhas</strong> = Perfil e valores.
+                Ou copie só os valores (sem cabeçalho), na ordem dos perfis listados.
+              </p>
+              <textarea class="paste-textarea" id="pastePSArea" placeholder="Cole aqui (Ctrl+V)…"></textarea>
+              <div class="paste-actions">
+                <button type="button" class="btn-apply-paste" data-apply="PS">Aplicar dados</button>
+                <button type="button" class="btn-clear-paste" data-clear="pastePSArea">Limpar</button>
+                <span class="paste-status" id="pastePS-status"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Planejamento do Projeto -->
+        <div class="gp-section" id="secPlannProjeto">
+          <div class="gp-section-header" data-section="secPlannProjeto">
+            <span class="gp-section-title">Planejamento do Projeto <span class="gp-section-badge">gp_Plann_Projeto</span></span>
+            <span class="gp-section-arrow">â–¾</span>
+          </div>
+          <div class="gp-section-body">
+            <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.6rem;">
+              Cole a grade completa da aba <strong>gp_Plann_Projeto</strong> (Ctrl+V). Essa matriz serÃ¡ aplicada no template.
+            </p>
+            <textarea class="paste-textarea" id="gpPlannProjetoPaste" placeholder="Cole aqui a tabela da aba gp_Plann_Projetoâ€¦"></textarea>
+            <div class="paste-actions">
+              <button type="button" class="btn-apply-paste" data-apply="PP">Aplicar matriz</button>
+              <button type="button" class="btn-clear-paste" data-clear="gpPlannProjetoPaste">Limpar</button>
+              <span class="paste-status" id="pastePP-status"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Disponibilidade -->
+        <div class="gp-section" id="secDisponibilidade">
+          <div class="gp-section-header" data-section="secDisponibilidade">
+            <span class="gp-section-title">Disponibilidade <span class="gp-section-badge">gp_Disponibilidade</span></span>
+            <span class="gp-section-arrow">▾</span>
+          </div>
+          <div class="gp-section-body">
+            <div class="gp-table-wrap">
+              <table class="gp-table" id="dispTable">
+                <thead>
+                  <tr>
+                    <th>Situação</th><th>Empregador</th><th>Nome</th>
+                    <th style="width:65px;text-align:center;">%</th>
+                    <th class="col-remove"></th>
+                  </tr>
+                </thead>
+                <tbody id="dispBody"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+              <button type="button" class="btn-add-row" id="btnAddDisp">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Adicionar
+              </button>
+              <button type="button" class="paste-toggle" data-paste="pasteDisp">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Colar da planilha
+              </button>
+            </div>
+            <div class="paste-zone" id="pasteDisp">
+              <p class="paste-hint">Colunas esperadas (nessa ordem): <strong>Situação · Empregador · Nome · %</strong></p>
+              <textarea class="paste-textarea" id="pasteDispArea" placeholder="Cole aqui (Ctrl+V)…"></textarea>
+              <div class="paste-actions">
+                <button type="button" class="btn-apply-paste" data-apply="Disp">Aplicar dados</button>
+                <button type="button" class="btn-clear-paste" data-clear="pasteDispArea">Limpar</button>
+                <span class="paste-status" id="pasteDisp-status"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Transversalidade -->
+        <div class="gp-section" id="secTransversalidade">
+          <div class="gp-section-header" data-section="secTransversalidade">
+            <span class="gp-section-title">Transversalidade <span class="gp-section-badge">gp_Transversalidade</span></span>
+            <span class="gp-section-arrow">▾</span>
+          </div>
+          <div class="gp-section-body">
+            <div class="gp-table-wrap">
+              <table class="gp-table" id="transTable">
+                <thead>
+                  <tr>
+                    <th>Nome</th><th>Função</th><th>Squad</th><th>Intervalo</th>
+                    <th class="col-remove"></th>
+                  </tr>
+                </thead>
+                <tbody id="transBody"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+              <button type="button" class="btn-add-row" id="btnAddTrans">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Adicionar
+              </button>
+              <button type="button" class="paste-toggle" data-paste="pasteTrans">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Colar da planilha
+              </button>
+            </div>
+            <div class="paste-zone" id="pasteTrans">
+              <p class="paste-hint">Colunas esperadas: <strong>Nome · Função · Squad · Intervalo</strong></p>
+              <textarea class="paste-textarea" id="pasteTransArea" placeholder="Cole aqui (Ctrl+V)…"></textarea>
+              <div class="paste-actions">
+                <button type="button" class="btn-apply-paste" data-apply="Trans">Aplicar dados</button>
+                <button type="button" class="btn-clear-paste" data-clear="pasteTransArea">Limpar</button>
+                <span class="paste-status" id="pasteTrans-status"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Roadmap -->
+        <div class="gp-section" id="secRoadmap">
+          <div class="gp-section-header" data-section="secRoadmap">
+            <span class="gp-section-title">Roadmap <span class="gp-section-badge">gp_Roadmap</span></span>
+            <span class="gp-section-arrow">▾</span>
+          </div>
+          <div class="gp-section-body">
+            <div class="gp-table-wrap">
+              <table class="gp-table" id="roadmapTable">
+                <thead>
+                  <tr>
+                    <th>Marco / Entrega</th>
+                    <th style="width:75px;text-align:center;">Posição</th>
+                    <th class="col-remove"></th>
+                  </tr>
+                </thead>
+                <tbody id="roadmapBody"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+              <button type="button" class="btn-add-row" id="btnAddRoadmap">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Adicionar marco
+              </button>
+              <button type="button" class="paste-toggle" data-paste="pasteRoadmap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Colar da planilha
+              </button>
+            </div>
+            <div class="paste-zone" id="pasteRoadmap">
+              <p class="paste-hint">Colunas esperadas: <strong>Marco · Posição</strong></p>
+              <textarea class="paste-textarea" id="pasteRoadmapArea" placeholder="Cole aqui (Ctrl+V)…"></textarea>
+              <div class="paste-actions">
+                <button type="button" class="btn-apply-paste" data-apply="Roadmap">Aplicar dados</button>
+                <button type="button" class="btn-clear-paste" data-clear="pasteRoadmapArea">Limpar</button>
+                <span class="paste-status" id="pasteRoadmap-status"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /paneForm -->
+    </div><!-- /manualSection -->
+
+    <hr class="divider" />
+
+    <!-- ② Arquivo base (Planner) — DEPOIS da escolha do modo -->
+    <div class="field" id="baseUploadSection">
+      <label>Arquivo base (export do Planner)</label>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" name="arquivo" id="fileInput" accept=".xlsx" />
+        <div class="dz-empty">
+          <div class="dz-cloud">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 16 12 12 8 16"/>
+              <line x1="12" y1="12" x2="12" y2="21"/>
+              <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+            </svg>
+          </div>
+          <div class="dz-hint"><strong>Clique para selecionar</strong> ou arraste aqui</div>
+          <span class="dz-tag">Planner Export .xlsx</span>
+        </div>
+        <div class="dz-file" id="dzFile">
+          <div class="dz-file-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="dz-file-info">
+            <div class="dz-file-name" id="dzFileName">—</div>
+            <div class="dz-file-sub" id="dzFileSize">—</div>
+          </div>
+          <button class="dz-remove" id="dzRemove" type="button" title="Remover arquivo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <button class="btn-secondary" type="button" id="btnValidateBase" style="display:none">Validar planilha base</button>
+      <div class="base-validation-msg" id="baseValidationMsg"></div>
+    </div>
+
+    <!-- ③ Configurações -->
+    <div class="field">
+      <label for="autor">Gerado por</label>
+      <input type="text" id="autor" name="autor"
+             placeholder="Ex: Vagner Kunz Cabral - GP Sênior"
+             value="" autocomplete="name" />
+      <label class="toggle-wrap" for="autoDate">
+        <input type="checkbox" id="autoDate" checked />
+        <span class="toggle-switch"></span>
+        <span class="toggle-label">Incluir data automaticamente</span>
+      </label>
+    </div>
+
+    <div class="field">
+      <label for="rotulosIgnorar">Rótulos para ignorar (opcional)</label>
+      <input type="text" id="rotulosIgnorar" name="rotulos_ignorar"
+             value="FLUXO.CONTINUO"
+             placeholder="Ex.: FLUXO.CONTINUO;OUTRO_ROTULO" />
+    </div>
+
+    <!-- Submit -->
+    <button class="btn" type="submit" id="submitBtn" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      <span id="submitBtnLabel">Gerar Dashboard</span>
+    </button>
+
+    <button class="btn-fechar" type="button" id="btnFechar">✕ &nbsp;Encerrar programa</button>
+
+    <div class="status loading" id="statusLoading" style="display:none">
+      <div class="spinner"></div>
+      <span>Processando arquivo, aguarde…</span>
+    </div>
+    <div class="status error"   id="statusError"   style="display:none"></div>
+    <div class="status success" id="statusSuccess" style="display:none"></div>
+
+    <div class="warnings-panel" id="warningsPanel">
+      <div class="warnings-header" id="warningsHeader">
+        <span class="warnings-header-left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span id="warningsTitle">Avisos do relatório</span>
+          <span class="warnings-badge" id="warningsBadge">0</span>
+        </span>
+        <span class="warnings-toggle" id="warningsToggle">▾ expandir</span>
+      </div>
+      <div class="warnings-body" id="warningsBody" style="display:none"></div>
+    </div>
+    </div><!-- /workflowPage -->
+  </form>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Encerrar o programa?</h2>
+    <p>O servidor será desligado e esta página deixará de funcionar.</p>
+    <div class="modal-btns">
+      <button class="btn-cancelar" id="btnCancelar">Cancelar</button>
+      <button class="btn-confirmar" id="btnConfirmar">Encerrar</button>
+    </div>
+  </div>
+</div>
+
+<p class="note">
+  Para tarefas contínuas, ajuste os rótulos ignorados (padrão: <strong>FLUXO.CONTINUO</strong>).<br/>
+  Planilha manual: abas <strong>gp_*</strong> (gp_Plann_Projeto, gp_Plann_Sprint, gp_Cabecalhos, gp_Disponibilidade, gp_Transversalidade, gp_Roadmap).
+  <a href="/baixar-starter">Baixar modelo</a>.
+</p>
+
+<script>
+/* ═══════════════════════════════════════
+   Refs
+═══════════════════════════════════════ */
+const form       = document.getElementById("form");
+const fileInput  = document.getElementById("fileInput");
+const dropZone   = document.getElementById("dropZone");
+const dzFileName = document.getElementById("dzFileName");
+const dzFileSize = document.getElementById("dzFileSize");
+const dzRemove   = document.getElementById("dzRemove");
+const submitBtn  = document.getElementById("submitBtn");
+const submitBtnLabel = document.getElementById("submitBtnLabel");
+const stLoading  = document.getElementById("statusLoading");
+const stError    = document.getElementById("statusError");
+const stSuccess  = document.getElementById("statusSuccess");
+const autoDate   = document.getElementById("autoDate");
+const mainCard   = document.getElementById("mainCard");
+const modePage   = document.getElementById("modePage");
+const workflowPage = document.getElementById("workflowPage");
+const wizardHead = document.getElementById("wizardHead");
+const wizardModeLabel = document.getElementById("wizardModeLabel");
+const btnStartFlow = document.getElementById("btnStartFlow");
+const btnTrocarModo = document.getElementById("btnTrocarModo");
+const modeCards = document.querySelectorAll("[data-mode-card]");
+const baseUploadSection = document.getElementById("baseUploadSection");
+const manualSection = document.getElementById("manualSection");
+const btnValidateBase = document.getElementById("btnValidateBase");
+const baseValidationMsg = document.getElementById("baseValidationMsg");
+const formPresetBox = document.getElementById("formPresetBox");
+const formPresetMeta = document.getElementById("formPresetMeta");
+const btnLoadLastForm = document.getElementById("btnLoadLastForm");
+let selectedMode = null;
+let baseValidated = false;
+let baseValidationLoading = false;
+
+/* ── Drop zone (arquivo principal) ── */
+dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", ()=> dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault(); dropZone.classList.remove("dragover");
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+dzRemove.addEventListener("click", e => { e.stopPropagation(); clearFile(); });
+
+function setFile(file) {
+  const dt = new DataTransfer(); dt.items.add(file); fileInput.files = dt.files;
+  dzFileName.textContent = file.name;
+  dzFileSize.textContent = (file.size / 1024).toFixed(0) + " KB · Pronto para enviar";
+  dropZone.classList.add("has-file"); hideAll();
+}
+function clearFile() { fileInput.value = ""; dropZone.classList.remove("has-file"); }
+
+/* ── Auto-date ── */
+function buildAuthorValue() {
+  const base = document.getElementById("autor").value.trim();
+  if (!autoDate.checked) return base || "Gerado automaticamente";
+  const now = new Date();
+  const d = `${String(now.getDate()).padStart(2,"0")}/${String(now.getMonth()+1).padStart(2,"0")}/${now.getFullYear()}`;
+  return base ? `${base} — ${d}` : d;
+}
+
+/* ── Warnings ── */
+const warningsPanel  = document.getElementById("warningsPanel");
+const warningsHeader = document.getElementById("warningsHeader");
+const warningsTitle  = document.getElementById("warningsTitle");
+const warningsBadge  = document.getElementById("warningsBadge");
+const warningsBody   = document.getElementById("warningsBody");
+const warningsToggle = document.getElementById("warningsToggle");
+let warningsExpanded = false;
+
+warningsHeader.addEventListener("click", () => {
+  warningsExpanded = !warningsExpanded;
+  warningsBody.style.display = warningsExpanded ? "block" : "none";
+  warningsToggle.textContent = warningsExpanded ? "▴ recolher" : "▾ expandir";
+});
+
+function showWarnings(warns) {
+  if (!warns || !warns.length) { warningsPanel.classList.remove("has-warns","only-info"); return; }
+  const erros  = warns.filter(w => w.nivel==="erro").length;
+  const avisos = warns.filter(w => w.nivel==="aviso").length;
+  const onlyInfo = !erros && !avisos;
+  warningsBadge.textContent = warns.length;
+  warningsTitle.textContent = erros ? `${erros} erro(s) encontrado(s)`
+    : avisos ? `${avisos} aviso(s) de qualidade`
+    : `${warns.length} observação(ões) sobre os dados`;
+  warningsPanel.classList.toggle("only-info", onlyInfo);
+  warningsPanel.classList.add("has-warns");
+  warningsBody.innerHTML = warns.map(w =>
+    `<div class="warn-item"><span class="warn-dot ${w.nivel||"info"}"></span><span>${w.msg||""}</span></div>`
+  ).join("");
+  if (!onlyInfo) {
+    warningsExpanded = true;
+    warningsBody.style.display = "block";
+    warningsToggle.textContent = "▴ recolher";
+  }
+}
+
+/* ═══════════════════════════════════════
+   Tabs
+═══════════════════════════════════════ */
+const tabBtns  = document.querySelectorAll(".tab-btn");
+const tabPanes = document.querySelectorAll(".tab-pane");
+let activeTab  = "none";
+const PANE_IDS = { none: "paneNone", dm: "paneDm", form: "paneForm" };
+
+tabBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab; activeTab = tab;
+    tabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    tabPanes.forEach(p => p.classList.toggle("active", p.id === (PANE_IDS[tab]||"paneNone")));
+    mainCard.classList.toggle("card--wide", tab === "form");
+    if (tab !== "dm") clearDmFile();
+  });
+});
+
+function setActiveTab(tab) {
+  activeTab = tab;
+  tabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  tabPanes.forEach(p => p.classList.toggle("active", p.id === (PANE_IDS[tab] || "paneNone")));
+  mainCard.classList.toggle("card--wide", tab === "form");
+}
+
+/* ── Planilha manual ── */
+const dmInput    = document.getElementById("dmInput");
+const dropZoneDM = document.getElementById("dropZoneDM");
+const dmFileName = document.getElementById("dmFileName");
+const dmFileSub  = document.getElementById("dmFileSub");
+const dmRemove   = document.getElementById("dmRemove");
+
+dropZoneDM.addEventListener("dragover",  e => { e.preventDefault(); dropZoneDM.classList.add("dragover"); });
+dropZoneDM.addEventListener("dragleave", ()=> dropZoneDM.classList.remove("dragover"));
+dropZoneDM.addEventListener("drop", e => {
+  e.preventDefault(); dropZoneDM.classList.remove("dragover");
+  if (e.dataTransfer.files.length) setDmFile(e.dataTransfer.files[0]);
+});
+dmInput.addEventListener("change", () => { if (dmInput.files.length) setDmFile(dmInput.files[0]); });
+dmRemove.addEventListener("click", e => { e.stopPropagation(); clearDmFile(); });
+
+function setDmFile(f) {
+  const dt = new DataTransfer(); dt.items.add(f); dmInput.files = dt.files;
+  dmFileName.textContent = f.name;
+  dmFileSub.textContent  = (f.size/1024).toFixed(0) + " KB · planilha manual pronta";
+  dmFileSub.classList.remove("hint"); dropZoneDM.classList.add("has-file");
+  updateSubmitState();
+}
+function clearDmFile() {
+  if (dmInput)    dmInput.value = "";
+  if (dmFileName) dmFileName.textContent = "Clique para selecionar os dados manuais";
+  if (dmFileSub)  { dmFileSub.textContent = "Excel manual com abas gp_* (gp_Plann_Projeto, gp_Plann_Sprint, gp_Cabecalhos, gp_Disponibilidade, gp_Transversalidade, gp_Roadmap)"; dmFileSub.classList.add("hint"); }
+  if (dropZoneDM) dropZoneDM.classList.remove("has-file");
+  updateSubmitState();
+}
+
+function modeDisplay(mode) {
+  if (mode === "none") return "Sem dados manuais";
+  if (mode === "dm") return "Com planilha manual";
+  if (mode === "form") return "Com formulario";
+  return "Modo";
+}
+
+function hideBaseValidationMsg() {
+  if (!baseValidationMsg) return;
+  baseValidationMsg.classList.remove("ok", "err");
+  baseValidationMsg.textContent = "";
+}
+
+function showBaseValidationMsg(kind, text) {
+  if (!baseValidationMsg) return;
+  baseValidationMsg.classList.remove("ok", "err");
+  baseValidationMsg.classList.add(kind === "ok" ? "ok" : "err");
+  baseValidationMsg.textContent = text || "";
+}
+
+function updateSubmitState() {
+  const hasBase = !!(fileInput && fileInput.files && fileInput.files.length);
+  let canSubmit = !!selectedMode && hasBase;
+  if (selectedMode === "dm") {
+    canSubmit = canSubmit && baseValidated && !!(dmInput && dmInput.files && dmInput.files.length);
+  } else if (selectedMode === "form") {
+    canSubmit = canSubmit && baseValidated;
+  }
+  submitBtn.disabled = !canSubmit;
+}
+
+function resetBaseValidation() {
+  baseValidated = false;
+  hideBaseValidationMsg();
+  if (selectedMode === "dm" || selectedMode === "form") {
+    manualSection.style.display = "none";
+  }
+  updateSubmitState();
+}
+
+function revealSecondStep() {
+  if (!(selectedMode === "dm" || selectedMode === "form")) return;
+  manualSection.style.display = "block";
+  setActiveTab(selectedMode);
+  if (selectedMode === "form") refreshPresetInfo();
+}
+
+async function validateBaseFile() {
+  if (!fileInput.files.length) {
+    showBaseValidationMsg("err", "Selecione o arquivo base para validar.");
+    return;
+  }
+  if (baseValidationLoading) return;
+  baseValidationLoading = true;
+  if (btnValidateBase) btnValidateBase.disabled = true;
+  showBaseValidationMsg("ok", "Validando planilha base...");
+  try {
+    const fd = new FormData();
+    fd.append("arquivo", fileInput.files[0]);
+    const resp = await fetch("/validar-base", { method: "POST", body: fd });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok || !body.ok) {
+      baseValidated = false;
+      manualSection.style.display = "none";
+      showBaseValidationMsg("err", body.erro || "Falha na validacao da planilha base.");
+      updateSubmitState();
+      return;
+    }
+    baseValidated = true;
+    const info = body.total_tarefas != null ? `Base validada (${body.total_tarefas} tarefas).` : "Base validada.";
+    showBaseValidationMsg("ok", info + " Etapa 2 liberada.");
+    revealSecondStep();
+    updateSubmitState();
+  } catch (_) {
+    baseValidated = false;
+    manualSection.style.display = "none";
+    showBaseValidationMsg("err", "Erro de conexao ao validar a planilha base.");
+    updateSubmitState();
+  } finally {
+    baseValidationLoading = false;
+    if (btnValidateBase) btnValidateBase.disabled = false;
+  }
+}
+
+function enterWorkflow(mode) {
+  selectedMode = mode;
+  setActiveTab(mode);
+  modePage.style.display = "none";
+  workflowPage.style.display = "block";
+  wizardHead.classList.add("active");
+  wizardModeLabel.textContent = `Modo selecionado: ${modeDisplay(mode)}`;
+  const tabsBar = document.querySelector(".tabs-bar");
+  if (tabsBar) tabsBar.style.display = "none";
+  if (baseUploadSection && manualSection) {
+    baseUploadSection.insertAdjacentElement("afterend", manualSection);
+  }
+
+  if (mode === "none") {
+    manualSection.style.display = "none";
+    if (btnValidateBase) btnValidateBase.style.display = "none";
+    hideBaseValidationMsg();
+    baseValidated = true;
+    submitBtnLabel.textContent = "Gerar Dashboard Executivo";
+  } else {
+    manualSection.style.display = "none";
+    if (btnValidateBase) btnValidateBase.style.display = "block";
+    baseValidated = false;
+    showBaseValidationMsg("err", "Valide a planilha base para liberar a etapa 2.");
+    submitBtnLabel.textContent = "Gerar Dashboard";
+  }
+
+  if (mode !== "dm") clearDmFile();
+  if (mode === "form") refreshPresetInfo();
+  updateSubmitState();
+}
+
+function backToModeSelection() {
+  selectedMode = null;
+  workflowPage.style.display = "none";
+  wizardHead.classList.remove("active");
+  modePage.style.display = "block";
+  modeCards.forEach(c => c.classList.remove("active"));
+  btnStartFlow.disabled = true;
+  delete btnStartFlow.dataset.mode;
+  hideBaseValidationMsg();
+  updateSubmitState();
+}
+
+modeCards.forEach(btn => {
+  btn.addEventListener("click", () => {
+    modeCards.forEach(c => c.classList.remove("active"));
+    btn.classList.add("active");
+    btnStartFlow.disabled = false;
+    btnStartFlow.dataset.mode = btn.dataset.modeCard;
+  });
+});
+btnStartFlow.addEventListener("click", () => {
+  const mode = btnStartFlow.dataset.mode;
+  if (!mode) return;
+  enterWorkflow(mode);
+});
+btnTrocarModo.addEventListener("click", () => backToModeSelection());
+if (workflowPage) workflowPage.style.display = "none";
+if (wizardHead) wizardHead.classList.remove("active");
+if (btnValidateBase) btnValidateBase.addEventListener("click", () => validateBaseFile());
+
+// Override file handlers to support staged flow with base validation.
+function setFile(file) {
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  fileInput.files = dt.files;
+  dzFileName.textContent = file.name;
+  dzFileSize.textContent = (file.size / 1024).toFixed(0) + " KB · Pronto para enviar";
+  dropZone.classList.add("has-file");
+  hideAll();
+  if (selectedMode === "dm" || selectedMode === "form") {
+    resetBaseValidation();
+    validateBaseFile();
+  } else if (selectedMode === "none") {
+    baseValidated = true;
+  }
+  updateSubmitState();
+}
+
+function clearFile() {
+  fileInput.value = "";
+  dropZone.classList.remove("has-file");
+  resetBaseValidation();
+}
+
+/* ═══════════════════════════════════════
+   Accordion GP
+═══════════════════════════════════════ */
+document.querySelectorAll(".gp-section-header").forEach(h => {
+  h.addEventListener("click", () => {
+    document.getElementById(h.dataset.section).classList.toggle("open");
+  });
+});
+const FORM_SECTION_IDS = [
+  "secCabecalhos",
+  "secPlannSprint",
+  "secPlannProjeto",
+  "secDisponibilidade",
+  "secTransversalidade",
+  "secRoadmap"
+];
+
+const FORM_SECTION_LABELS = {
+  secCabecalhos: "Cabecalhos",
+  secPlannSprint: "Planejamento da Sprint",
+  secPlannProjeto: "Planejamento do Projeto",
+  secDisponibilidade: "Disponibilidade",
+  secTransversalidade: "Transversalidade",
+  secRoadmap: "Roadmap"
+};
+
+function sectionLabel(sectionId) {
+  return FORM_SECTION_LABELS[sectionId] || "Secao";
+}
+
+function setSectionStatus(sectionId, kind, text) {
+  const el = document.getElementById(`${sectionId}SaveStatus`);
+  if (!el) return;
+  el.classList.remove("ok", "err", "pending");
+  if (kind) el.classList.add(kind);
+  el.textContent = text || "";
+}
+
+function openSection(sectionId) {
+  const sec = document.getElementById(sectionId);
+  if (!sec) return;
+  sec.classList.add("open");
+  sec.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function ensureSectionSaveControls() {
+  document.querySelectorAll("#paneForm .gp-section").forEach(sec => {
+    if (sec.querySelector(".section-save-bar")) return;
+    const body = sec.querySelector(".gp-section-body");
+    if (!body) return;
+    const bar = document.createElement("div");
+    bar.className = "section-save-bar";
+    bar.innerHTML = `
+      <span class="section-save-status" id="${sec.id}SaveStatus"></span>
+      <button type="button" class="section-save-btn" data-sec-save="${sec.id}">Save()</button>
+    `;
+    body.appendChild(bar);
+  });
+}
+
+function parsePercentInput(v) {
+  if (v == null) return null;
+  const txt = String(v).trim();
+  if (!txt) return null;
+  const hadPct = txt.includes("%");
+  const num = Number(txt.replace("%", "").replace(",", "."));
+  if (!Number.isFinite(num)) return null;
+  if (hadPct || Math.abs(num) > 1) return num / 100;
+  return num;
+}
+
+function validateFormSection(sectionId, payload) {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, msg: "Formulario invalido." };
+  }
+
+  if (sectionId === "secCabecalhos") {
+    const c = payload.cabecalhos || {};
+    const linkedin = String(c.linkedin || "").trim();
+    if (linkedin && !/^https?:\/\//i.test(linkedin)) {
+      return { ok: false, msg: "LinkedIn deve iniciar com http:// ou https://." };
+    }
+    return { ok: true };
+  }
+
+  if (sectionId === "secPlannSprint") {
+    const ps = payload.plann_sprint || {};
+    const hus = Array.isArray(ps.hus) ? ps.hus.map(h => String(h || "").trim()).filter(Boolean) : [];
+    if (!hus.length) return { ok: false, msg: "Informe ao menos 1 HU no Planejamento da Sprint." };
+    const seen = new Set();
+    for (const hu of hus) {
+      const key = hu.toUpperCase();
+      if (seen.has(key)) return { ok: false, msg: `HU duplicada encontrada: ${hu}.` };
+      seen.add(key);
+    }
+    const rows = Array.isArray(ps.rows) ? ps.rows : [];
+    for (let i = 0; i < rows.length; i++) {
+      const vals = Array.isArray(rows[i]?.valores) ? rows[i].valores : [];
+      for (let j = 0; j < vals.length; j++) {
+        const n = Number(vals[j]);
+        if (!Number.isFinite(n) || n < 0) {
+          return { ok: false, msg: `Valor invalido na linha ${i + 1}, HU ${j + 1}.` };
+        }
+      }
+    }
+    return { ok: true };
+  }
+
+  if (sectionId === "secPlannProjeto") {
+    const pp = payload.plann_projeto;
+    if (!pp || !Array.isArray(pp.matrix) || !pp.matrix.length) {
+      return { ok: false, msg: "Cole a matriz da aba gp_Plann_Projeto antes de salvar." };
+    }
+    const widths = pp.matrix
+      .filter(r => Array.isArray(r) && r.some(c => String(c || "").trim()))
+      .map(r => r.length);
+    if (!widths.length) return { ok: false, msg: "Matriz da gp_Plann_Projeto vazia." };
+    const w0 = widths[0];
+    if (widths.some(w => w !== w0)) {
+      return { ok: false, msg: "A matriz da gp_Plann_Projeto deve ter o mesmo numero de colunas em todas as linhas." };
+    }
+    return { ok: true };
+  }
+
+  if (sectionId === "secDisponibilidade") {
+    const rows = Array.isArray(payload.disponibilidade) ? payload.disponibilidade : [];
+    if (!rows.length) return { ok: false, msg: "Adicione ao menos 1 linha de disponibilidade." };
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || {};
+      const nome = String(row.nome || "").trim();
+      const emp = String(row.empregador || "").trim();
+      const sit = String(row.situacao || "").trim();
+      const pct = parsePercentInput(row.percentual ?? row.pct ?? row.percent);
+      if (!nome) return { ok: false, msg: `Linha ${i + 1} da disponibilidade sem Nome.` };
+      if (!sit && !emp) return { ok: false, msg: `Linha ${i + 1} da disponibilidade sem Situacao/Empregador.` };
+      if (pct == null || !Number.isFinite(pct)) return { ok: false, msg: `Percentual invalido na linha ${i + 1} da disponibilidade.` };
+      if (pct < 0 || pct > 1) return { ok: false, msg: `Percentual fora do intervalo na linha ${i + 1} (use 0-100 ou 0-1).` };
+    }
+    return { ok: true };
+  }
+
+  if (sectionId === "secTransversalidade") {
+    const rows = Array.isArray(payload.transversalidade) ? payload.transversalidade : [];
+    if (!rows.length) return { ok: false, msg: "Adicione ao menos 1 linha de transversalidade." };
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || {};
+      if (!String(row.nome || "").trim()) return { ok: false, msg: `Linha ${i + 1} da transversalidade sem Nome.` };
+      if (!String(row.funcao || "").trim()) return { ok: false, msg: `Linha ${i + 1} da transversalidade sem Funcao.` };
+    }
+    return { ok: true };
+  }
+
+  if (sectionId === "secRoadmap") {
+    const rows = Array.isArray(payload.roadmap) ? payload.roadmap : [];
+    if (!rows.length) return { ok: false, msg: "Adicione ao menos 1 marco no roadmap." };
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || {};
+      if (!String(row.marco || "").trim()) return { ok: false, msg: `Linha ${i + 1} do roadmap sem Marco.` };
+      const pos = Number(row.posicao);
+      if (!Number.isFinite(pos)) return { ok: false, msg: `Posicao invalida na linha ${i + 1} do roadmap.` };
+    }
+    return { ok: true };
+  }
+
+  return { ok: true };
+}
+
+function validateAllFormSections(payload) {
+  for (const sectionId of FORM_SECTION_IDS) {
+    const check = validateFormSection(sectionId, payload);
+    if (!check.ok) {
+      return { ok: false, sectionId, msg: `${sectionLabel(sectionId)}: ${check.msg}` };
+    }
+  }
+  return { ok: true };
+}
+
+function saveFormSection(sectionId) {
+  const payload = collectFormData();
+  const check = validateFormSection(sectionId, payload);
+  if (!check.ok) {
+    setSectionStatus(sectionId, "err", check.msg);
+    openSection(sectionId);
+    showError(`${sectionLabel(sectionId)}: ${check.msg}`);
+    return false;
+  }
+  saveLastFormPreset(payload);
+  refreshPresetInfo();
+  const now = new Date();
+  const stamp = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  setSectionStatus(sectionId, "ok", `Salvo as ${stamp}.`);
+  showSuccess(`${sectionLabel(sectionId)} salvo com sucesso.`);
+  return true;
+}
+
+ensureSectionSaveControls();
+document.querySelectorAll("[data-sec-save]").forEach(btn => {
+  btn.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const sectionId = btn.dataset.secSave;
+    if (!sectionId) return;
+    saveFormSection(sectionId);
+  });
+});
+document.querySelectorAll("#paneForm .gp-section").forEach(sec => {
+  sec.addEventListener("input", ev => {
+    const t = ev.target;
+    if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement)) return;
+    setSectionStatus(sec.id, "pending", "Alteracoes nao salvas.");
+  });
+});
+
+/* ── Paste toggles ── */
+document.querySelectorAll(".paste-toggle").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const zone = document.getElementById(btn.dataset.paste);
+    if (zone) zone.classList.toggle("open");
+  });
+});
+document.querySelectorAll(".btn-clear-paste").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const ta = document.getElementById(btn.dataset.clear);
+    if (ta) ta.value = "";
+  });
+});
+
+/* ═══════════════════════════════════════
+   Planejamento da Sprint
+═══════════════════════════════════════ */
+const GP_ROLES = [
+  "PO (DOCS, LINKS, LEIS, ETC.)",
+  "REQUISITOS",
+  "UX/UI  (DESKTOP)",
+  "UX/UI  (MOBILE)",
+  "DEV FRONT (DESKTOP)",
+  "DEV FRONT (MOBILE)",
+  "DEV BACK",
+  "DEV BANCO DE DADOS",
+  "DEV BI",
+  "TESTE (possíveis no prazo da sprint)",
+  "ARQUITETURA"
+];
+
+let plannHus = ["HU001", "HU002"];
+
+function renderPlannSprintTable() {
+  const huRow  = document.getElementById("plannSprintHuRow");
+  const addTh  = document.getElementById("plannSprintAddHuTh");
+  Array.from(huRow.querySelectorAll(".hu-th")).forEach(th => th.remove());
+
+  plannHus.forEach((hu, idx) => {
+    const th = document.createElement("th");
+    th.className = "hu-th";
+    th.innerHTML = `<div class="hu-th-wrap">
+      <input class="hu-col-input" type="text" value="${hu}" data-hu-idx="${idx}" placeholder="HU000" />
+      <button type="button" class="btn-remove-hu" data-hu-idx="${idx}" title="Remover HU">✕</button>
+    </div>`;
+    huRow.insertBefore(th, addTh);
+  });
+
+  huRow.querySelectorAll(".hu-col-input").forEach(inp =>
+    inp.addEventListener("input", () => { plannHus[+inp.dataset.huIdx] = inp.value.trim().toUpperCase(); })
+  );
+  huRow.querySelectorAll(".btn-remove-hu").forEach(btn =>
+    btn.addEventListener("click", () => { plannHus.splice(+btn.dataset.huIdx, 1); renderPlannSprintTable(); })
+  );
+
+  const tbody = document.getElementById("plannSprintBody");
+  // Preserve existing values
+  const saved = {};
+  tbody.querySelectorAll("tr").forEach(tr => {
+    const rc = tr.querySelector(".role-cell"); if (!rc) return;
+    saved[rc.textContent.trim()] = Array.from(tr.querySelectorAll("input[type=number]")).map(i => i.value);
+  });
+  tbody.innerHTML = "";
+
+  GP_ROLES.forEach(role => {
+    const tr = document.createElement("tr");
+    let cells = `<td class="role-cell">${role}</td>`;
+    plannHus.forEach((_, idx) => {
+      const prev = (saved[role]||[])[idx] || "";
+      cells += `<td><input type="number" min="0" placeholder="0" value="${prev}" /></td>`;
+    });
+    cells += `<td></td>`;
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById("btnAddHu").addEventListener("click", () => {
+  plannHus.push("HU" + String(plannHus.length + 1).padStart(3, "0"));
+  renderPlannSprintTable();
+});
+renderPlannSprintTable();
+
+/* ── Parse TSV helper ── */
+function parseTSV(text) {
+  return text.trim().split("\n")
+    .map(line => line.replace(/\r$/, "").split("\t"))
+    .filter(row => row.some(c => c.trim()));
+}
+
+function normalizePlannProjetoMatrix(matrix) {
+  if (!Array.isArray(matrix) || !matrix.length) return matrix;
+  const safeRows = matrix.filter(r => Array.isArray(r) && r.length);
+  if (!safeRows.length) return matrix;
+
+  const firstHeader = String(safeRows[0][0] || "").trim().toLowerCase();
+  const secondHeader = String(safeRows[0][1] || "").trim().toLowerCase();
+  const looksMediaHeader = /media|m[eé]dia/.test(firstHeader);
+  const looksScopeHeader = /escopo|sprint|cont[ií]nuo|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez/.test(secondHeader);
+
+  let nonEmpty = 0;
+  let numericFirst = 0;
+  let labelSecond = 0;
+  const maxCheck = Math.min(safeRows.length, 16);
+  for (let i = 1; i < maxCheck; i++) {
+    const row = safeRows[i] || [];
+    const a = String(row[0] || "").trim();
+    const b = String(row[1] || "").trim();
+    if (a || b) nonEmpty++;
+    if (/^-?\d+(?:[.,]\d+)?$/.test(a)) numericFirst++;
+    if (/po|requis|ux|dev|teste|arquitet|mensur|throughput|hist[oó]ria/.test(b.toLowerCase())) labelSecond++;
+  }
+
+  const looksShiftedByMedia = looksMediaHeader || (
+    looksScopeHeader && nonEmpty >= 4 && numericFirst >= Math.ceil(nonEmpty * 0.6) && labelSecond >= 2
+  );
+  if (!looksShiftedByMedia) return matrix;
+  return matrix.map(row => (Array.isArray(row) ? row.slice(1) : row));
+}
+
+function normalizePlannProjetoMatrixSafe(matrix) {
+  if (!Array.isArray(matrix) || !matrix.length) return matrix;
+  const safeRows = matrix.filter(r => Array.isArray(r) && r.length);
+  if (!safeRows.length) return matrix;
+
+  const norm = (s) => String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  const isScope = (s) => /escopo|sprint|continuo|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez/.test(norm(s));
+  const isProfile = (s) => /po|requis|ux|dev|benchmark|construcao|teste|registro|mensur|throughput|historia/.test(norm(s));
+
+  const firstHeader = norm(safeRows[0][0] || "");
+  const secondHeader = norm(safeRows[0][1] || "");
+  const looksMediaHeader = /media/.test(firstHeader);
+
+  let nonEmpty = 0;
+  let numericFirst = 0;
+  let profileFirst = 0;
+  let naLikeFirst = 0;
+  const maxCheck = Math.min(safeRows.length, 16);
+  for (let i = 1; i < maxCheck; i++) {
+    const row = safeRows[i] || [];
+    const a = String(row[0] || "").trim();
+    const b = String(row[1] || "").trim();
+    if (a || b) nonEmpty++;
+    if (/^-?\d+(?:[.,]\d+)?$/.test(a)) numericFirst++;
+    if (isProfile(a)) profileFirst++;
+    if (/^(n\/a|na)?$/i.test(a)) naLikeFirst++;
+    if (isProfile(b)) {
+      // reservado para heurísticas futuras
+    }
+  }
+
+  // Só remove coluna quando "Média..." está explícito.
+  if (looksMediaHeader) {
+    return matrix.map(row => (Array.isArray(row) ? row.slice(1) : row));
+  }
+
+  // Preset/arquivo antigo: coluna de rótulos foi perdida.
+  const hasIdHeader = /\bid\b/.test(firstHeader) && /descr/.test(firstHeader);
+  const looksMissingLabelCol =
+    !hasIdHeader &&
+    isScope(firstHeader) &&
+    isScope(secondHeader) &&
+    nonEmpty >= 4 &&
+    profileFirst <= 1 &&
+    (naLikeFirst + numericFirst) >= Math.ceil(nonEmpty * 0.6);
+  if (!looksMissingLabelCol) return matrix;
+
+  const labels = [
+    "ID ou DESCRIÇÃO DO ITEM",
+    "PO (DOCS, LINKS, LEIS, ETC.)",
+    "REQUISITOS",
+    "UX/UI  (DESKTOP)",
+    "UX/UI  (MOBILE)",
+    "BENCHMARK COMPONENTES - DEV",
+    "CONSTRUCAO COMPONENTES - DEV",
+    "TESTES- DEV",
+    "REGISTRO e PUBLICAÇÃO (Storybook) - DEV",
+    "",
+    "",
+    "",
+    "Mensuração (maior esforço individual)",
+    "Throughput - Qtd Storypoints",
+    "Throughput - Qtd de Tarefas/Cards",
+    "Qtd de Histórias de Usuário (HU)"
+  ];
+  return matrix.map((row, idx) => [labels[idx] ?? "", ...(Array.isArray(row) ? row : [])]);
+}
+
+/* ── Apply paste: Plann Projeto ── */
+document.querySelector('[data-apply="PP"]').addEventListener("click", () => {
+  const text = document.getElementById("gpPlannProjetoPaste").value;
+  if (!text.trim()) return;
+  const rows = parseTSV(text);
+  const normalized = normalizePlannProjetoMatrixSafe(rows);
+  const shifted = normalized !== rows;
+  if (shifted) {
+    document.getElementById("gpPlannProjetoPaste").value = normalized
+      .map(row => (Array.isArray(row) ? row.join("\t") : ""))
+      .join("\n");
+  }
+  const st = document.getElementById("pastePP-status");
+  st.textContent = shifted
+    ? `OK ${normalized.length} linha(s) prontas (coluna de media removida automaticamente)`
+    : `OK ${rows.length} linha(s) pronta(s) para envio`;
+  st.classList.add("visible");
+  setTimeout(() => st.classList.remove("visible"), 3000);
+});
+
+/* ── Apply paste: Plann Sprint ── */
+document.querySelector('[data-apply="PS"]').addEventListener("click", () => {
+  const text = document.getElementById("pastePSArea").value;
+  if (!text.trim()) return;
+  const rows = parseTSV(text);
+  if (!rows.length) return;
+
+  // Detect if first row is a header (non-numeric first non-empty col after first)
+  let dataRows = rows;
+  const firstRow = rows[0];
+  const isHeader = firstRow.length > 1 && isNaN(parseFloat(firstRow[1]));
+  if (isHeader) {
+    // First row = HU names (skip 1st cell which might be "Perfil" label)
+    const newHus = firstRow.slice(1).map(h => h.trim().toUpperCase()).filter(h => h);
+    if (newHus.length) { plannHus = newHus; }
+    dataRows = rows.slice(1);
+  } else if (firstRow.length - 1 > plannHus.length) {
+    // Auto-expand HU columns to match data
+    while (plannHus.length < firstRow.length - 1) {
+      plannHus.push("HU" + String(plannHus.length + 1).padStart(3, "0"));
+    }
+  }
+  renderPlannSprintTable();
+
+  // Fill values
+  const trs = document.querySelectorAll("#plannSprintBody tr");
+  dataRows.forEach((row, ri) => {
+    if (ri >= trs.length) return;
+    const inputs = trs[ri].querySelectorAll("input[type=number]");
+    // if row has role name in col 0 → match by name
+    const roleCol = row[0].trim();
+    let targetTr = null;
+    if (roleCol && isNaN(parseFloat(roleCol))) {
+      // Try to find matching role
+      trs.forEach(tr => {
+        if (tr.querySelector(".role-cell")?.textContent.trim().toLowerCase().includes(roleCol.toLowerCase().slice(0,6)))
+          targetTr = tr;
+      });
+    }
+    const realInputs = targetTr
+      ? targetTr.querySelectorAll("input[type=number]")
+      : inputs;
+    const valStart = (roleCol && isNaN(parseFloat(roleCol))) ? 1 : 0;
+    realInputs.forEach((inp, ci) => {
+      const v = row[valStart + ci];
+      if (v !== undefined) inp.value = parseFloat(v) || 0;
+    });
+  });
+
+  const st = document.getElementById("pastePS-status");
+  st.textContent = `✓ ${dataRows.length} linha(s) importada(s)`;
+  st.classList.add("visible");
+  setTimeout(() => st.classList.remove("visible"), 3000);
+});
+
+/* ═══════════════════════════════════════
+   Disponibilidade
+═══════════════════════════════════════ */
+function addDispRow(s, e, n, p) {
+  const tbody = document.getElementById("dispBody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Ex: Alocado" value="${s||''}" /></td>
+    <td><input type="text" placeholder="Órgão/Empresa" value="${e||''}" /></td>
+    <td><input type="text" placeholder="Nome completo" value="${n||''}" /></td>
+    <td><input type="number" min="0" max="100" placeholder="100" value="${p!=null&&p!==''?p:''}" /></td>
+    <td class="col-remove"><button type="button" class="btn-remove-row" title="Remover">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg></button></td>`;
+  tr.querySelector(".btn-remove-row").addEventListener("click", () => tr.remove());
+  tbody.appendChild(tr);
+}
+document.getElementById("btnAddDisp").addEventListener("click", () => addDispRow());
+addDispRow();
+
+document.querySelector('[data-apply="Disp"]').addEventListener("click", () => {
+  const text = document.getElementById("pasteDispArea").value;
+  if (!text.trim()) return;
+  const rows = parseTSV(text);
+  let imported = 0;
+  rows.forEach(row => {
+    if (!row.some(c => c.trim())) return;
+    // Skip header rows (if col 0 looks like a label)
+    if (/^(situac|empregad|nome|%|coluna)/i.test(row[0].trim())) return;
+    addDispRow(row[0]||"", row[1]||"", row[2]||"", row[3]||"");
+    imported++;
+  });
+  const st = document.getElementById("pasteDisp-status");
+  st.textContent = `✓ ${imported} linha(s) importada(s)`;
+  st.classList.add("visible");
+  setTimeout(() => st.classList.remove("visible"), 3000);
+});
+
+/* ═══════════════════════════════════════
+   Transversalidade
+═══════════════════════════════════════ */
+function addTransRow(n, f, s, i) {
+  const tbody = document.getElementById("transBody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Nome" value="${n||''}" /></td>
+    <td><input type="text" placeholder="Função / Perfil" value="${f||''}" /></td>
+    <td><input type="text" placeholder="Squad" value="${s||''}" /></td>
+    <td><input type="text" placeholder="Ex: 01/04–30/04" value="${i||''}" /></td>
+    <td class="col-remove"><button type="button" class="btn-remove-row" title="Remover">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg></button></td>`;
+  tr.querySelector(".btn-remove-row").addEventListener("click", () => tr.remove());
+  tbody.appendChild(tr);
+}
+document.getElementById("btnAddTrans").addEventListener("click", () => addTransRow());
+addTransRow();
+
+document.querySelector('[data-apply="Trans"]').addEventListener("click", () => {
+  const text = document.getElementById("pasteTransArea").value;
+  if (!text.trim()) return;
+  const rows = parseTSV(text);
+  let imported = 0;
+  rows.forEach(row => {
+    if (!row.some(c => c.trim())) return;
+    if (/^(nome|func|squad|interv)/i.test(row[0].trim())) return;
+    addTransRow(row[0]||"", row[1]||"", row[2]||"", row[3]||"");
+    imported++;
+  });
+  const st = document.getElementById("pasteTrans-status");
+  st.textContent = `✓ ${imported} linha(s) importada(s)`;
+  st.classList.add("visible");
+  setTimeout(() => st.classList.remove("visible"), 3000);
+});
+
+/* ═══════════════════════════════════════
+   Roadmap
+═══════════════════════════════════════ */
+function addRoadmapRow(m, p) {
+  const tbody = document.getElementById("roadmapBody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Ex: MVP entregue, Release 1.0…" value="${m||''}" /></td>
+    <td><input type="number" placeholder="0" value="${p!=null&&p!==''?p:''}" /></td>
+    <td class="col-remove"><button type="button" class="btn-remove-row" title="Remover">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg></button></td>`;
+  tr.querySelector(".btn-remove-row").addEventListener("click", () => tr.remove());
+  tbody.appendChild(tr);
+}
+document.getElementById("btnAddRoadmap").addEventListener("click", () => addRoadmapRow());
+addRoadmapRow();
+
+document.querySelector('[data-apply="Roadmap"]').addEventListener("click", () => {
+  const text = document.getElementById("pasteRoadmapArea").value;
+  if (!text.trim()) return;
+  const rows = parseTSV(text);
+  let imported = 0;
+  rows.forEach(row => {
+    if (!row.some(c => c.trim())) return;
+    if (/^(marco|entrega|posic)/i.test(row[0].trim())) return;
+    addRoadmapRow(row[0]||"", row[1]||"");
+    imported++;
+  });
+  const st = document.getElementById("pasteRoadmap-status");
+  st.textContent = `✓ ${imported} marco(s) importado(s)`;
+  st.classList.add("visible");
+  setTimeout(() => st.classList.remove("visible"), 3000);
+});
+
+/* ═══════════════════════════════════════
+   Serializar formulário GP → JSON
+═══════════════════════════════════════ */
+function collectFormData() {
+  const cabecalhos = {
+    projeto:      document.getElementById("gpProjeto").value.trim(),
+    gerente:      document.getElementById("gpGerente").value.trim(),
+    linkedin:     document.getElementById("gpLinkedin").value.trim(),
+    product_goal: document.getElementById("gpProductGoal").value.trim(),
+    sprint_goal:  document.getElementById("gpSprintGoal").value.trim()
+  };
+  const hus = plannHus.slice();
+  const rows = [];
+  document.querySelectorAll("#plannSprintBody tr").forEach((tr, ri) => {
+    const valores = Array.from(tr.querySelectorAll("input[type=number]"))
+      .map(inp => { const v = parseInt(inp.value); return isNaN(v) ? 0 : v; });
+    rows.push({ perfil: GP_ROLES[ri] || "", valores });
+  });
+  const disponibilidade = [];
+  document.querySelectorAll("#dispBody tr").forEach(tr => {
+    const inp = tr.querySelectorAll("input"); if (!inp.length) return;
+    const nome = inp[2].value.trim();
+    const situacao = inp[0].value.trim();
+    const empregador = inp[1].value.trim();
+    const pctRaw = inp[3].value.trim();
+    if (situacao || empregador || nome || pctRaw) {
+      disponibilidade.push({
+        situacao,
+        empregador,
+        nome,
+        percentual: pctRaw === "" ? null : pctRaw
+      });
+    }
+  });
+  const transversalidade = [];
+  document.querySelectorAll("#transBody tr").forEach(tr => {
+    const inp = tr.querySelectorAll("input"); if (!inp.length) return;
+    if (inp[0].value.trim() || inp[1].value.trim())
+      transversalidade.push({ nome: inp[0].value.trim(), funcao: inp[1].value.trim(), squad: inp[2].value.trim(), intervalo: inp[3].value.trim() });
+  });
+  const roadmap = [];
+  document.querySelectorAll("#roadmapBody tr").forEach(tr => {
+    const inp = tr.querySelectorAll("input"); if (!inp.length) return;
+    const marco = inp[0].value.trim();
+    if (marco) { const p = parseInt(inp[1].value); roadmap.push({ marco, posicao: isNaN(p) ? null : p }); }
+  });
+
+  let plann_projeto = null;
+  const ppRaw = (document.getElementById("gpPlannProjetoPaste")?.value || "").trim();
+  if (ppRaw) {
+    const matrix = normalizePlannProjetoMatrixSafe(parseTSV(ppRaw));
+    if (matrix.length) plann_projeto = { matrix };
+  }
+
+  const payload = { cabecalhos, plann_sprint: { hus, rows }, disponibilidade, transversalidade, roadmap };
+  if (plann_projeto) payload.plann_projeto = plann_projeto;
+  return payload;
+}
+
+const FORM_PRESET_KEY = "onepagereport.form.last.v1";
+
+function readLastFormPreset() {
+  try {
+    const raw = localStorage.getItem(FORM_PRESET_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.data && typeof parsed.data === "object") return parsed;
+    // Compatibilidade com formato antigo (payload salvo direto, sem wrapper {saved_at, data})
+    if (parsed && typeof parsed === "object" && (
+      parsed.cabecalhos || parsed.plann_sprint || parsed.disponibilidade ||
+      parsed.transversalidade || parsed.roadmap || parsed.plann_projeto
+    )) {
+      return { saved_at: parsed.saved_at || null, data: parsed };
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveLastFormPreset(data) {
+  try {
+    localStorage.setItem(FORM_PRESET_KEY, JSON.stringify({
+      saved_at: new Date().toISOString(),
+      data
+    }));
+  } catch (_) {}
+}
+
+function refreshPresetInfo() {
+  const preset = readLastFormPreset();
+  if (!formPresetBox || !formPresetMeta) return;
+  if (!preset || selectedMode !== "form") {
+    formPresetBox.classList.remove("active");
+    return;
+  }
+  const dt = new Date(preset.saved_at);
+  const ts = isNaN(dt.getTime())
+    ? "salvo anteriormente"
+    : `salvo em ${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  formPresetMeta.textContent = `Pre-preenchimento ${ts}.`;
+  formPresetBox.classList.add("active");
+}
+
+function applyFormPreset(data) {
+  if (!data) return;
+  const c = data.cabecalhos || {};
+  document.getElementById("gpProjeto").value = c.projeto || "";
+  document.getElementById("gpGerente").value = c.gerente || "";
+  document.getElementById("gpLinkedin").value = c.linkedin || "";
+  document.getElementById("gpProductGoal").value = c.product_goal || "";
+  document.getElementById("gpSprintGoal").value = c.sprint_goal || "";
+
+  const ps = data.plann_sprint || {};
+  if (Array.isArray(ps.hus) && ps.hus.length) {
+    plannHus = ps.hus.map(v => String(v || "").trim().toUpperCase()).filter(Boolean);
+    renderPlannSprintTable();
+  }
+  const psRows = Array.isArray(ps.rows) ? ps.rows : (
+    Array.isArray(ps.values)
+      ? ps.values.map(v => ({ valores: Array.isArray(v) ? v : [] }))
+      : []
+  );
+  const trs = document.querySelectorAll("#plannSprintBody tr");
+  trs.forEach((tr, i) => {
+    const values = Array.isArray(psRows[i]?.valores) ? psRows[i].valores : [];
+    const inputs = tr.querySelectorAll("input[type=number]");
+    inputs.forEach((inp, j) => {
+      const num = Number(values[j]);
+      inp.value = Number.isFinite(num) ? num : 0;
+    });
+  });
+
+  const dispBody = document.getElementById("dispBody");
+  dispBody.innerHTML = "";
+  const disp = Array.isArray(data.disponibilidade) ? data.disponibilidade : [];
+  if (disp.length) disp.forEach(r => addDispRow(
+    r.situacao || "",
+    r.empregador || "",
+    r.nome || "",
+    (r.percentual ?? r.pct ?? r.percent ?? "")
+  ));
+  else addDispRow();
+
+  const transBody = document.getElementById("transBody");
+  transBody.innerHTML = "";
+  const trans = Array.isArray(data.transversalidade) ? data.transversalidade : [];
+  if (trans.length) trans.forEach(r => addTransRow(r.nome || "", r.funcao || "", r.squad || "", r.intervalo || ""));
+  else addTransRow();
+
+  const roadmapBody = document.getElementById("roadmapBody");
+  roadmapBody.innerHTML = "";
+  const roadmap = Array.isArray(data.roadmap) ? data.roadmap : [];
+  if (roadmap.length) roadmap.forEach(r => addRoadmapRow(r.marco || "", r.posicao ?? ""));
+  else addRoadmapRow();
+
+  const ppRaw = data.plann_projeto && Array.isArray(data.plann_projeto.matrix)
+    ? data.plann_projeto.matrix : [];
+  const pp = normalizePlannProjetoMatrixSafe(ppRaw);
+  document.getElementById("gpPlannProjetoPaste").value =
+    pp.map(row => (Array.isArray(row) ? row : []).join("\t")).join("\n");
+
+  FORM_SECTION_IDS.forEach(id => setSectionStatus(id, "ok", "Dados carregados do pre-salvo."));
+}
+
+if (btnLoadLastForm) {
+  btnLoadLastForm.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const preset = readLastFormPreset();
+    if (!preset || !preset.data) {
+      showError("Nao foi encontrado pre-preenchimento valido.");
+      return;
+    }
+    try {
+      applyFormPreset(preset.data);
+      refreshPresetInfo();
+      updateSubmitState();
+      showSuccess("Pre-preenchimento aplicado no formulario.");
+    } catch (err) {
+      showError("Falha ao aplicar pre-preenchimento: " + (err?.message || "erro desconhecido"));
+    }
+  });
+}
+
+/* ═══════════════════════════════════════
+   Submit
+═══════════════════════════════════════ */
+form.addEventListener("submit", async e => {
+  e.preventDefault(); hideAll();
+  if (!selectedMode) { showError("Escolha um modo de geração e clique em Continuar."); return; }
+  if (!fileInput.files.length) { showError("Selecione um arquivo .xlsx antes de continuar."); return; }
+  if ((selectedMode === "dm" || selectedMode === "form") && !baseValidated) {
+    showError("Valide a planilha base antes de continuar.");
+    return;
+  }
+
+  const fd = new FormData(form);
+  fd.set("autor", buildAuthorValue());
+
+  if (selectedMode === "none") fd.delete("dados_manuais");
+  if (selectedMode === "dm" && !dmInput.files.length) {
+    showError("Selecione a planilha manual ou troque para 'Sem dados manuais'."); return;
+  }
+  if (selectedMode === "form") {
+    fd.delete("dados_manuais");
+    const formPayload = collectFormData();
+    const validation = validateAllFormSections(formPayload);
+    if (!validation.ok) {
+      if (validation.sectionId) {
+        openSection(validation.sectionId);
+        setSectionStatus(validation.sectionId, "err", validation.msg);
+      }
+      showError(validation.msg || "Formulario com erros de preenchimento.");
+      return;
+    }
+    fd.set("dados_formulario", JSON.stringify(formPayload));
+    saveLastFormPreset(formPayload);
+    refreshPresetInfo();
+    FORM_SECTION_IDS.forEach(id => setSectionStatus(id, "ok", "Validado e salvo."));
+  }
+
+  submitBtn.disabled = true;
+  stLoading.style.display = "flex";
+
+  try {
+    const resp = await fetch("/gerar", { method: "POST", body: fd });
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({ erro: resp.statusText }));
+      showError(body.erro || "Erro ao processar o arquivo."); return;
+    }
+    let warns = [];
+    try {
+      const wh = resp.headers.get("X-Dashboard-Warnings");
+      if (wh) warns = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(wh), c => c.charCodeAt(0))));
+    } catch(_) {}
+    const blob  = await resp.blob();
+    const cd    = resp.headers.get("Content-Disposition") || "";
+    const match = cd.match(/filename="?([^";\n]+)"?/);
+    const fname = match ? match[1] : "Dashboard_Sprint.xlsx";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    showSuccess(`✓ Dashboard gerado! O download de <strong>${fname}</strong> foi iniciado.`);
+    showWarnings(warns);
+  } catch(_) {
+    showError("Erro de conexão. Verifique se o servidor está rodando.");
+  } finally {
+    submitBtn.disabled = false;
+    updateSubmitState();
+    stLoading.style.display = "none";
+  }
+});
+
+function hideAll() {
+  stLoading.style.display = stError.style.display = stSuccess.style.display = "none";
+  warningsPanel.classList.remove("has-warns","only-info");
+  warningsExpanded = false;
+  warningsBody.style.display = "none";
+  warningsToggle.textContent = "▾ expandir";
+}
+function showError(msg) { stError.innerHTML = "⚠ " + msg; stError.style.display = "block"; }
+function showSuccess(msg) { stSuccess.innerHTML = msg; stSuccess.style.display = "block"; }
+
+/* ── Encerrar servidor ── */
+const modalOverlay = document.getElementById("modalOverlay");
+document.getElementById("btnFechar").addEventListener("click", () => modalOverlay.classList.add("visible"));
+document.getElementById("btnCancelar").addEventListener("click", () => modalOverlay.classList.remove("visible"));
+document.getElementById("btnConfirmar").addEventListener("click", async () => {
+  modalOverlay.classList.remove("visible");
+  try { await fetch("/shutdown", { method: "POST" }); } catch(_) {}
+  document.body.innerHTML = `<div style="font-family:Segoe UI,sans-serif;text-align:center;padding:4rem;color:#5e7a78">
+    <p style="font-size:1.2rem;font-weight:600;color:#004140">Programa encerrado.</p>
+    <p style="margin-top:0.5rem;font-size:0.9rem">Pode fechar esta aba.</p></div>`;
+});
+</script>
+</body>
+</html>

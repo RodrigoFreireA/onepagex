@@ -1883,13 +1883,20 @@ document.querySelector('[data-apply="PS"]').addEventListener("click", () => {
   const rows = parseTSV(text);
   if (!rows.length) return;
 
-  // Detect if first row is a header (non-numeric first non-empty col after first)
+  // Detect if first row is a header.
   let dataRows = rows;
   const firstRow = rows[0];
-  const isHeader = firstRow.length > 1 && isNaN(parseFloat(firstRow[1]));
+  const huInHeader = firstRow.filter(c => /^HU\s*\d+/i.test((c || "").trim())).length;
+  const isHeader = huInHeader > 0 || (firstRow.length > 1 && isNaN(parseFloat(firstRow[1])));
   if (isHeader) {
-    // First row = HU names (skip 1st cell which might be "Perfil" label)
-    const newHus = firstRow.slice(1).map(h => h.trim().toUpperCase()).filter(h => h);
+    // First row = HU names.
+    // Se a primeira célula já é HU, não descartar a coluna 0.
+    const firstCell = (firstRow[0] || "").trim();
+    const huStartIdx = /^HU\s*\d+/i.test(firstCell) ? 0 : 1;
+    const newHus = firstRow
+      .slice(huStartIdx)
+      .map(h => (h || "").trim().toUpperCase())
+      .filter(h => /^HU\s*\d+/i.test(h));
     if (newHus.length) { plannHus = newHus; }
     dataRows = rows.slice(1);
   } else if (firstRow.length - 1 > plannHus.length) {

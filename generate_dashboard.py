@@ -4239,6 +4239,11 @@ def _fill_burndown_sheet(wb, df, sprint_start, sprint_end, export_date):
     dfw = df[~df["is_backlog"]].copy()
     total = len(dfw)
 
+    _w(ws, 1, 1, "Data")
+    _w(ws, 1, 2, "Meta (Linear)")
+    _w(ws, 1, 3, "Planejado")
+    _w(ws, 1, 4, "A Realizar")
+
     bd_start, bd_end = _month_bounds(sprint_end)
     days = (bd_end - bd_start).days + 1
     plan_by_day = _build_step_plan(total, days, blocks=5)
@@ -4271,6 +4276,11 @@ def _fill_burndown_hu_sheet(wb, df, sprint_start, sprint_end, export_date):
     ws = wb[sheet_name]
     ROWS = 31
     dfw = df[df["hu"] != ""].copy()
+
+    _w(ws, 1, 1, "Data")
+    _w(ws, 1, 2, "Meta (Linear)")
+    _w(ws, 1, 3, "Planejado")
+    _w(ws, 1, 4, "A Realizar")
 
     bd_start, bd_end = _month_bounds(sprint_end)
     days = (bd_end - bd_start).days + 1
@@ -4312,25 +4322,53 @@ def _fill_burndown_hu_sheet(wb, df, sprint_start, sprint_end, export_date):
             _w(ws, r, 4, None)
 
 
-def _fill_burndown_storypoints_sheet(wb, df, sprint_end, hu_storypoints):
+def _fill_burndown_storypoints_sheet(wb, df, sprint_end, hu_storypoints, storypoints_total=None):
     sheet_name = "xBurndownStorypoints" if "xBurndownStorypoints" in wb.sheetnames else None
     if not sheet_name:
         return
     ws = wb[sheet_name]
     ROWS = 31
 
-    dfw = df[(~df["is_backlog"]) & (df["hu"] != "")].copy()
+    dfw_hu = df[(~df["is_backlog"]) & (df["hu"] != "")].copy()
+    dfw_all = df[(~df["is_backlog"])].copy()
     bd_start, bd_end = _month_bounds(sprint_end)
     days = (bd_end - bd_start).days + 1
 
     total_sp = float(sum(v for v in hu_storypoints.values() if v))
+    if total_sp <= 0 and storypoints_total is not None:
+        try:
+            total_sp = float(storypoints_total)
+        except Exception:
+            total_sp = 0.0
+
+    if total_sp <= 0:
+        _w(ws, 1, 1, "Data")
+        _w(ws, 1, 2, "Meta (Linear)")
+        _w(ws, 1, 3, "Planejado")
+        _w(ws, 1, 4, "A Realizar")
+        for i in range(ROWS):
+            r = i + 2
+            _w(ws, r, 1, None)
+            _w(ws, r, 2, None)
+            _w(ws, r, 3, None)
+            _w(ws, r, 4, None)
+        return
+
     plan_by_day = _build_step_plan(total_sp, days, blocks=5)
-    task_counts_by_hu = dfw["hu"].value_counts().to_dict()
     task_weight = {}
-    for hu, count in task_counts_by_hu.items():
-        sp = float(hu_storypoints.get(str(hu).upper(), 0) or 0)
-        if count > 0:
-            task_weight[hu] = sp / count
+    use_hu_weights = bool(hu_storypoints) and sum(v for v in hu_storypoints.values() if v) > 0
+    if use_hu_weights:
+        task_counts_by_hu = dfw_hu["hu"].value_counts().to_dict()
+        for hu, count in task_counts_by_hu.items():
+            sp = float(hu_storypoints.get(str(hu).upper(), 0) or 0)
+            if count > 0:
+                task_weight[hu] = sp / count
+    else:
+        total_tasks = len(dfw_all)
+        default_weight = (total_sp / total_tasks) if total_tasks > 0 else 0.0
+        done_dates_all = sorted(
+            d for d in dfw_all.loc[dfw_all["done_kpi"] & dfw_all["date_done"].notna(), "date_done"].tolist()
+        )
 
     _w(ws, 1, 1, "Data")
     _w(ws, 1, 2, "Meta (Linear)")
@@ -4348,13 +4386,19 @@ def _fill_burndown_storypoints_sheet(wb, df, sprint_end, hu_storypoints):
             if i == 0:
                 a_realizar = total_sp
             else:
-                a_realizar = 0.0
-                for _, row in dfw.iterrows():
-                    hu = row.get("hu", "")
-                    w = task_weight.get(hu, 0.0)
-                    d_done = row.get("date_done")
-                    if not _is_valid_date(d_done) or d_done > d:
-                        a_realizar += w
+                if use_hu_weights:
+                    a_realizar = 0.0
+                    for _, row in dfw_hu.iterrows():
+                        hu = row.get("hu", "")
+                        w = task_weight.get(hu, 0.0)
+                        d_done = row.get("date_done")
+                        if not _is_valid_date(d_done) or d_done > d:
+                            a_realizar += w
+                else:
+                    done_count = bisect_right(done_dates_all, d)
+                    a_realizar = total_sp - (done_count * default_weight)
+                    if a_realizar < 0:
+                        a_realizar = 0.0
 
             _w(ws, r, 1, dt)
             _w(ws, r, 2, meta)
@@ -4596,7 +4640,8 @@ def fill_template(template_path, input_path, output_path,
                   dados_manuais_path=None,
                   report_type="equipe",
                   ignore_labels=None,
-                  form_data=None):
+                  form_data=None,
+                  storypoints_total=None):
     """
     Main pipeline:
     1. Load + compute from Planner export
@@ -4688,6 +4733,8 @@ def fill_template(template_path, input_path, output_path,
     hu_storypoints = _extract_gp_storypoints_by_hu(wb)
     if hu_storypoints:
         _enrich_kpis_with_hu_storypoints(kpis, df_scope, hu_storypoints)
+    elif storypoints_total is not None and float(storypoints_total) > 0:
+        kpis["storypoints"] = round(float(storypoints_total), 2)
 
     print(f"[5/6] Preenchendo abas de dados...")
     _form_cab = form_data.get("cabecalhos", {}) if form_data else {}
@@ -4717,7 +4764,9 @@ def fill_template(template_path, input_path, output_path,
     _fill_esforco_hu_sheet(wb, df_all, hu_full_names)
     _fill_burndown_sheet(wb, df_scope, sprint_start, sprint_end, export_date)
     _fill_burndown_hu_sheet(wb, df_scope, sprint_start, sprint_end, export_date)
-    _fill_burndown_storypoints_sheet(wb, df_scope, sprint_end, hu_storypoints)
+    _fill_burndown_storypoints_sheet(
+        wb, df_scope, sprint_end, hu_storypoints, storypoints_total=storypoints_total
+    )
     bd_start, _ = _month_bounds(sprint_end)
     _fill_dispersao_sheet(wb, hu_disp, days, hu_matrix, nao_hu_daily,
                           bd_start, hu_full_names)
@@ -4901,6 +4950,11 @@ def _fill_burndown_from_rows(wb, rows, sheet_key="tarefas"):
     if sheet_name not in wb.sheetnames:
         return
     ws = wb[sheet_name]
+
+    _w(ws, 1, 1, "Data")
+    _w(ws, 1, 2, "Meta (Linear)")
+    _w(ws, 1, 3, "Planejado")
+    _w(ws, 1, 4, "A Realizar")
 
     for i, row in enumerate(rows):
         r = i + 2

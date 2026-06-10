@@ -92,6 +92,36 @@ def _strip(v):
 def _lower(v):
     return _strip(v).lower()
 
+def _norm_text_key(v):
+    """Normalize text for resilient Excel header/sheet matching."""
+    t = _strip(v)
+    if not t:
+        return ""
+    t = unicodedata.normalize("NFKD", t)
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", t).strip().lower()
+
+def _find_excel_sheet(xl, *names):
+    wanted = {_norm_text_key(name) for name in names}
+    for sheet in xl.sheet_names:
+        if _norm_text_key(sheet) in wanted:
+            return sheet
+    return None
+
+def _find_column(columns, *aliases):
+    wanted = {_norm_text_key(alias) for alias in aliases}
+    for col in columns:
+        if _norm_text_key(col) in wanted:
+            return col
+    return None
+
+def _first_non_empty(df, col):
+    if col is None or col not in df.columns:
+        return ""
+    vals = df[col].dropna().astype(str).map(str.strip)
+    vals = vals[(vals != "") & (vals.str.lower() != "nan")]
+    return vals.iloc[0] if not vals.empty else ""
+
 def _parse_date(val):
     if not val or str(val).strip().lower() in ("", "nan", "none"):
         return None
@@ -129,12 +159,58 @@ def _is_backlog(bucket):
     return False
 
 def _area_for_assignee(assignee):
-    a = _lower(assignee)
+    a = _norm_text_key(assignee)
     for area, kws in AREA_KEYWORDS.items():
         for kw in kws:
-            if kw in a:
+            if _norm_text_key(kw) in a:
                 return area
     return "Outros"
+
+
+def _area_for_label_token(label):
+    key = _norm_text_key(label).lstrip(".")
+    if not key or key in {"fluxo.continuo", "fluxo continuo"}:
+        return None
+    if key.startswith("hu"):
+        return None
+
+    exact = {
+        "gp": "Gestao",
+        "gestao": "Gestao",
+        "gestao projeto": "Gestao",
+        "requisitos": "Requisitos",
+        "req": "Requisitos",
+        "q/a": "Testes",
+        "q/a testes": "Testes",
+        "qa": "Testes",
+        "testes": "Testes",
+        "teste": "Testes",
+        "ux": "UX",
+        "ui": "UX",
+        "ux/ui": "UX",
+        "dev": "Devs",
+        "frontend": "Devs",
+        "front-end": "Devs",
+        "backend": "Devs",
+        "back-end": "Devs",
+        "mobile": "Devs",
+        "arquitetura": "Arquitetura",
+        "publicacao": "Publicacao",
+        "deploy": "Publicacao",
+        "revisao": "Revisao",
+    }
+    if key in exact:
+        return exact[key]
+
+    for area, kws in AREA_KEYWORDS.items():
+        for kw in kws:
+            kw_key = _norm_text_key(kw)
+            if not kw_key:
+                continue
+            pattern = r"(^|[\s._/\-])" + re.escape(kw_key) + r"($|[\s._/\-])"
+            if re.search(pattern, key):
+                return area
+    return None
 
 
 def _parse_date_series(series):
@@ -179,11 +255,9 @@ def _area_for_labels_or_assignee_cached(labels, assignee):
     if labels_text and _lower(labels_text) not in ("", "nan"):
         parts = [p.strip() for p in labels_text.split(";") if p.strip()]
         for part in parts:
-            pl = part.lower()
-            for area, kws in AREA_KEYWORDS.items():
-                for kw in kws:
-                    if kw in pl:
-                        return area
+            area = _area_for_label_token(part)
+            if area:
+                return area
     return _area_for_assignee(assignee)
 
 
@@ -210,14 +284,15 @@ def _area_for_bucket_labels_assignee(bucket, labels, assignee):
       3. Bucket "Em Teste" → Revisao  (tarefas em revisão/teste)
       4. Demais            → baseado em labels/assignee
     """
-    b_lower = bucket.lower().strip()
+    b_lower = _norm_text_key(bucket)
     if "gestão" in b_lower or "gestao" in b_lower:
         return "Gestao"
     # GP label check (tasks with GP outside of Gestão bucket)
-    lbl_parts = [p.strip().lower() for p in labels.split(";") if p.strip()]
-    if "gp" in lbl_parts:
-        return "Gestao"
-    if "em teste" in b_lower:
+    for part in [p.strip() for p in str(labels).split(";") if p.strip()]:
+        area = _area_for_label_token(part)
+        if area == "Gestao":
+            return "Gestao"
+    if "em teste" in b_lower or "homolog" in b_lower:
         return "Revisao"
     return _area_for_labels_or_assignee_cached(labels, assignee)
 
@@ -369,8 +444,8 @@ def _enrich_kpis_with_hu_storypoints(kpis, df, hu_storypoints):
 
 
 # ─────────────────────────────── LOAD ────────────────────────────────────────
-def load_base(path):
-    """Load Planner export. Returns (df_tasks, plan_name, export_date_str)."""
+def _load_base_legacy_unused(path):
+    """Legacy single-sheet loader kept for reference."""
     xl = pd.ExcelFile(path)
     sheet = xl.sheet_names[0]
     df = xl.parse(sheet, dtype=str)
@@ -396,6 +471,125 @@ def load_base(path):
     return df, plan_name, export_date_str
 
 
+def load_base(path):
+    """Load Planner/Teams export in legacy and current multi-sheet formats."""
+    xl = pd.ExcelFile(path)
+    plan_name = ""
+    export_date_str = ""
+
+    plan_sheet = _find_excel_sheet(xl, "Plano")
+    if plan_sheet:
+        try:
+            pn = xl.parse(plan_sheet, dtype=str)
+            pn.columns = [_strip(c) for c in pn.columns]
+            plan_name = _first_non_empty(
+                pn, _find_column(pn.columns, "Nome do plano", "Plan name")
+            )
+            export_date_str = _first_non_empty(
+                pn, _find_column(pn.columns, "Data da exportacao", "Export date")
+            )
+        except Exception:
+            pass
+
+    legacy_plan_sheet = _find_excel_sheet(xl, "Nome do plano", "Plan name")
+    if legacy_plan_sheet and (not plan_name or not export_date_str):
+        try:
+            pn = xl.parse(legacy_plan_sheet, dtype=str)
+            pn.columns = [_strip(c) for c in pn.columns]
+            if not plan_name:
+                plan_col = _find_column(pn.columns, "Nome do plano", "Plan name")
+                plan_name = _first_non_empty(pn, plan_col)
+                if not plan_name and len(pn.columns) >= 2:
+                    plan_name = _strip(pn.columns[1])
+            if not export_date_str:
+                export_col = _find_column(pn.columns, "Data da exportacao", "Export date")
+                export_date_str = _first_non_empty(pn, export_col)
+                if not export_date_str and len(pn.columns) >= 2:
+                    mask = pn.iloc[:, 0].astype(str).map(_norm_text_key).str.contains(
+                        "exporta", na=False
+                    )
+                    if mask.any():
+                        export_date_str = _strip(pn.loc[mask].iloc[0, 1])
+        except Exception:
+            pass
+
+    task_sheet = (
+        _find_excel_sheet(xl, "Dados Consolidados")
+        or _find_excel_sheet(xl, "Tarefas", "Tasks")
+        or xl.sheet_names[0]
+    )
+    df = xl.parse(task_sheet, dtype=str)
+    df.columns = [_strip(c) for c in df.columns]
+
+    task_col = _find_column(df.columns, "Nome da tarefa", "Task name")
+    if not task_col:
+        raise ValueError(
+            "Arquivo nao parece ser um export valido do Planner/Teams: "
+            "coluna de tarefas nao encontrada."
+        )
+
+    def _replace_from_lookup(source_aliases, sheet_aliases, key_aliases, value_aliases):
+        source_col = _find_column(df.columns, *source_aliases)
+        lookup_sheet = _find_excel_sheet(xl, *sheet_aliases)
+        if not source_col or not lookup_sheet:
+            return
+        try:
+            lookup = xl.parse(lookup_sheet, dtype=str)
+            lookup.columns = [_strip(c) for c in lookup.columns]
+            key_col = _find_column(lookup.columns, *key_aliases)
+            value_col = _find_column(lookup.columns, *value_aliases)
+            if not key_col or not value_col:
+                return
+            mapping = {}
+            for _, row in lookup.iterrows():
+                key = _strip(row.get(key_col))
+                value = _strip(row.get(value_col))
+                if key and key.lower() != "nan" and value and value.lower() != "nan":
+                    mapping[key] = value
+            if not mapping:
+                return
+
+            def _map_cell(v):
+                s = _strip(v)
+                if not s or s.lower() == "nan":
+                    return ""
+                parts = [p.strip() for p in str(s).split(";") if p.strip()]
+                if len(parts) > 1:
+                    return "; ".join(mapping.get(p, p) for p in parts)
+                return mapping.get(s, s)
+
+            df[source_col] = df[source_col].map(_map_cell)
+        except Exception:
+            return
+
+    _replace_from_lookup(
+        ("Categoria", "Bucket name", "Nome do bucket"),
+        ("Buckets",),
+        ("ID de Bucket", "Bucket ID"),
+        ("Nome do Bucket", "Bucket name"),
+    )
+    _replace_from_lookup(
+        ("Atribuido a", "Assigned to"),
+        ("Usuarios", "Users"),
+        ("ID do Usuario", "User ID"),
+        ("Nome do usuario", "User name"),
+    )
+    _replace_from_lookup(
+        ("Criado por", "Created by"),
+        ("Usuarios", "Users"),
+        ("ID do Usuario", "User ID"),
+        ("Nome do usuario", "User name"),
+    )
+    _replace_from_lookup(
+        ("Concluida por", "Completed by"),
+        ("Usuarios", "Users"),
+        ("ID do Usuario", "User ID"),
+        ("Nome do usuario", "User name"),
+    )
+
+    return df, plan_name, export_date_str
+
+
 # ────────────────────────────── COMPUTE ──────────────────────────────────────
 def compute_all(df_raw, plan_name, export_date_str=""):
     """Normalise column names, parse dates and return enriched DataFrame."""
@@ -404,6 +598,7 @@ def compute_all(df_raw, plan_name, export_date_str=""):
         "task name":                                "tarefa",
         "nome do bucket":                           "bucket",
         "bucket name":                              "bucket",
+        "categoria":                                "bucket",
         "atribuído a":                              "assignee",
         "assigned to":                              "assignee",
         "concluído em":                             "data_conclusao",
@@ -418,6 +613,7 @@ def compute_all(df_raw, plan_name, export_date_str=""):
         "data de criacao":                          "data_criacao",
         "criado em":                                "data_criacao",
         "progresso":                                "pct_done_raw",
+        "status":                                   "pct_done_raw",
         "percentual concluído":                     "pct_done",
         "% concluída":                              "pct_done",
         "percent complete":                         "pct_done",
@@ -2813,6 +3009,15 @@ def build_gestao_meta(df):
     if not mask.any():
         mask = df["tarefa"].fillna("").astype(str).str.strip().str.lower() == "gestao"
     if not mask.any():
+        task_norm = df["tarefa"].fillna("").astype(str).map(_norm_text_key)
+        mask = task_norm.isin({"gestao", "governanca", "governance"})
+    if not mask.any() and "labels" in df.columns:
+        label_norm = df["labels"].fillna("").astype(str).map(_norm_text_key)
+        notes_norm = df["notas"].fillna("").astype(str).map(_norm_text_key)
+        mask = label_norm.str.contains(r"(^|;)\.?gp($|;)", regex=True, na=False) & (
+            notes_norm.str.contains("projeto", na=False)
+        )
+    if not mask.any():
         return {"projeto": "", "gerente": "", "linkedin": ""}
 
     desc = _strip(df.loc[mask, "notas"].iloc[0])
@@ -2822,7 +3027,7 @@ def build_gestao_meta(df):
         if ":" not in line:
             continue
         key_raw, _, val = line.partition(":")
-        key_norm = key_raw.strip().upper()
+        key_norm = _norm_text_key(key_raw).upper()
         val = val.strip()
         if key_norm == "PROJETO":
             result["projeto"] = val
